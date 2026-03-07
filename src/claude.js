@@ -178,9 +178,13 @@ Return ONLY a JSON object in this exact shape — no markdown, no explanation:
     }
   ],
   "manual_steps": [
-    "Baptism segment mentioned in Slack message - unclear where this belongs in the plan."
+    "Add baptism as an item after Communion — brief the MC accordingly.",
+    "Add 'Volleyball Social' announcement after Connect Cards and attach provided media."
   ]
-}`;
+}
+
+Manual steps must be concise action items written in imperative form (e.g. "Add X after Y", "Brief the MC on Z").
+Do not use phrasing like "Slack message requests", "The plan mentions", or any other preamble — just state what needs to be done.`;
 }
 
 function buildAnalysisUserPrompt(slackMessage, pcoPlan) {
