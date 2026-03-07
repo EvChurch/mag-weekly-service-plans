@@ -449,7 +449,7 @@ function formatAnalysisReply(analysis, pcoPlan, sunday, campusName) {
   const pcoUrl = `https://services.planningcenteronline.com/plans/${pcoPlan.id}`;
   const lines = [`*${campusPrefix}Service Plan Analysis — <${pcoUrl}|Sunday ${sunday}>*\n`];
 
-  lines.push('*Proposed Changes* (react :white_check_mark: to apply to Planning Center):');
+  lines.push('*Proposed Changes:*');
   if (proposed_changes.length === 0) {
     lines.push('- No changes needed.');
   } else {
