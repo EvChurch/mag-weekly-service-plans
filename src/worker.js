@@ -46,13 +46,9 @@ export default {
       if (params.has('payload')) {
         const interactive = JSON.parse(params.get('payload'));
         if (interactive.type === 'view_submission' && interactive.view?.callback_id === 'plan_setup') {
-          // Respond immediately to close the modal; do KV write + ephemeral async
-          ctx.waitUntil(
-            handleInteractivePayload(interactive, env).catch((err) =>
-              console.error('Interactive payload error:', err),
-            ),
-          );
-          return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+          // Save config and return a success view inside the modal
+          const response = await handleInteractivePayload(interactive, env);
+          return new Response(JSON.stringify(response), { headers: { 'Content-Type': 'application/json' } });
         }
       }
 
@@ -255,7 +251,22 @@ async function handleInteractivePayload(payload, env) {
   }
 
   await env.STATE.put(`campuses:${channelId}`, JSON.stringify(campuses));
-  await postEphemeral(channelId, payload.user.id, `${campusName} configured.`, env.SLACK_BOT_TOKEN);
+
+  // Return a success view — postEphemeral won't work if the bot isn't in the channel
+  return {
+    response_action: 'update',
+    view: {
+      type: 'modal',
+      title: { type: 'plain_text', text: 'Campus Setup' },
+      close: { type: 'plain_text', text: 'Close' },
+      blocks: [
+        {
+          type: 'section',
+          text: { type: 'mrkdwn', text: `:white_check_mark: *${campusName}* configured.` },
+        },
+      ],
+    },
+  };
 }
 
 // ─────────────────────────────────────────────
