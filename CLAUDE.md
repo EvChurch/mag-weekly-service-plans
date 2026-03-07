@@ -7,59 +7,71 @@ can understand the intent and design decisions when making future changes.
 
 ## What This Project Does
 
-This is a Cloudflare Worker that automates the North Campus weekly service plan workflow.
-The operator (magnification driver) previously had to manually read the service plan
-posted in a private Slack channel, cross-reference it against the Planning Center Online
-(PCO) plan, fix recurring issues (notice titles, placeholder names, empty items), and
-check volunteer roster gaps. This project automates all of that.
+This is a Cloudflare Worker that automates the weekly service plan workflow for one or
+more campuses sharing a single Slack channel. The operator (magnification driver)
+previously had to manually read the service plan posted in a private Slack channel,
+cross-reference it against the Planning Center Online (PCO) plan, fix recurring issues
+(notice titles, placeholder names, empty items), and check volunteer roster gaps.
+This project automates all of that, and can serve multiple campuses from one bot instance.
+
+Campuses are configured via the `/plan-setup` slash command — per-campus settings
+(campus name, PCO service type ID, approver) are stored in KV, not in secrets.
 
 ---
 
 ## Architecture: Event-Driven + Safety Net Cron
 
-All logic runs in a single Cloudflare Worker with two entry points:
+All logic runs in a single Cloudflare Worker with two entry points. The same URL
+receives three Slack payload types, distinguished by Content-Type:
+
+| Source | Content-Type | Detection |
+|--------|-------------|-----------|
+| Events API | `application/json` | JSON body, `type` field |
+| Slash command | `application/x-www-form-urlencoded` | Form body has `command` field |
+| Modal submission | `application/x-www-form-urlencoded` | Form body has `payload` JSON with `type: "view_submission"` |
 
 ```
-1. HTTP HANDLER (receives all Slack Events API webhooks)
+1. HTTP HANDLER
+   |
+   +-- Slash command: /plan-setup
+   |   |-- Open Slack modal (Campus Name, PCO Service Type ID, Approver)
+   |   +-- On submit: upsert campus into campuses:CHANNEL_ID in KV
+   |       Post ephemeral: "North Campus configured."
+   |
+   +-- Event: member_joined_channel
+   |   |-- Only act if joining user is the bot itself
+   |   +-- Only act if campuses:CHANNEL_ID doesn't exist yet
+   |       Post ephemeral to inviter: "Run /plan-setup to configure a campus."
    |
    +-- Event: message.groups (new message in #weekly-service-plans)
    |   |
-   |   |-- [Classification] Send message to Claude:
-   |   |   "Is this the weekly North Campus service plan update?"
-   |   |   -> yes / no
-   |   |
-   |   |-- If NO: ignore and return
-   |   |
-   |   +-- If YES:
-   |       |-- Fetch next Sunday North Campus plan from PCO API
-   |       |       (includes items, teams, and all team member statuses)
-   |       |-- Check all team positions for scheduling gaps (no-reply, declined, unfilled)
-   |       |-- Send Slack message + PCO plan to Claude for full analysis
-   |       |   -> proposed_changes[] + manual_steps[]
-   |       |-- Save plan to Cloudflare KV (key = week date, plan_received = true)
-   |       +-- Post Slack reply to that message's thread
-   |           (includes: Proposed Changes, Roster Check, Manual Steps)
+   |   |-- [Classification] Send message to Claude: yes / no
+   |   |-- If NO: ignore
+   |   +-- If YES: load campuses:CHANNEL_ID → for each campus in parallel:
+   |       |-- Fetch that campus's PCO plan (using campus.service_type_id)
+   |       |-- Full analysis via Claude -> proposed_changes[] + manual_steps[]
+   |       |-- Post separate top-level analysis message for that campus
+   |       +-- Save to KV: week:YYYY-MM-DD:CAMPUS_NAME
    |
    +-- Event: message (reply in bot's thread)
-   |   |-- Detect it's a reply to the bot's message
+   |   |-- Find campus by matching bot_reply_ts across all week:*:* KV entries
    |   |-- Send feedback + current plan to Claude for refinement
    |   |-- Edit bot's Slack message with updated plan
    |   +-- Save updated plan to KV
    |
    +-- Event: reaction_added (checkmark on bot reply)
-       |-- Verify it's the approved user's checkmark on the bot's message
-       |-- Load plan from KV
+       |-- Find campus by matching bot_reply_ts across all week:*:* KV entries
+       |-- Verify reaction is from campus's configured approver_user_id
        |-- Apply all changes to PCO via API
        |-- Post confirmation reply in thread
        +-- Mark KV entry as applied
 
 2. CRON TRIGGER (Saturday 03:00 UTC = 4 PM NZDT - safety net only)
    |
-   |-- Check KV for this week: has plan_received = true?
-   |-- If YES: do nothing (plan already processed)
-   +-- If NO: post to channel:
-       "Hey, just checking - has the service plan for this Sunday been posted yet?
-        I haven't seen it come through."
+   |-- Load campuses:CHANNEL_ID
+   |-- Check week:YYYY-MM-DD:CAMPUS_NAME for each campus
+   |-- If ALL have plan_received = true: do nothing
+   +-- If ANY campus is missing a plan: post one generic nudge to channel
 ```
 
 ---
@@ -113,7 +125,23 @@ Multiple refinement rounds are supported before checkmark approval.
 
 ## Cloudflare KV Schema
 
-Key: `week:YYYY-MM-DD` (the Sunday date of that week's service)
+### Campus config per channel (array, supports multiple campuses)
+
+Key: `campuses:CHANNEL_ID`
+
+Value:
+```json
+[
+  { "campus_name": "North Campus",   "service_type_id": "111", "approver_user_id": "U..." },
+  { "campus_name": "Central Campus", "service_type_id": "222", "approver_user_id": "U..." }
+]
+```
+
+Upserted on every `/plan-setup` submission. Matched by `campus_name` — same name updates, new name appends.
+
+### Weekly state per campus
+
+Key: `week:YYYY-MM-DD:CAMPUS_NAME` (e.g. `week:2026-03-08:North Campus`)
 
 Value:
 ```json
@@ -125,9 +153,15 @@ Value:
   "pco_plan_id":      "12345678",
   "proposed_changes": [...],
   "manual_steps":     [...],
-  "applied":          false
+  "applied":          false,
+  "campus_name":      "North Campus",
+  "service_type_id":  "111",
+  "approver_user_id": "U..."
 }
 ```
+
+`campus_name`, `service_type_id`, and `approver_user_id` are denormalized into week state
+so that thread replies and reactions can operate without re-fetching campus config.
 
 ---
 
@@ -206,10 +240,16 @@ OAuth Scopes: `groups:history`, `chat:write`, `reactions:read`
 Bot Events subscribed:
 - `message.groups` — new messages in private channels
 - `reaction_added` — reactions on messages
+- `member_joined_channel` — bot join detection
+
+Interactivity & Shortcuts: enabled, same Worker URL
+
+Slash Commands: `/plan-setup`, same Worker URL
 
 The bot must be invited to the private channel manually (`/invite @botname`).
 
-Approval is gated on `APPROVAL_SLACK_USER_ID` — only reactions from that user trigger PCO writes.
+Approval is per-campus — the `approver_user_id` stored in campus config (via `/plan-setup`)
+is the only user whose checkmark reaction triggers PCO writes for that campus.
 
 ---
 
@@ -220,9 +260,10 @@ Approval is gated on `APPROVAL_SLACK_USER_ID` — only reactions from that user 
 | `SLACK_BOT_TOKEN` | Bot User OAuth Token (xoxb-...) |
 | `SLACK_SIGNING_SECRET` | Used to verify webhook requests came from Slack |
 | `SLACK_CHANNEL_ID` | ID of the #weekly-service-plans private channel |
+| `SLACK_BOT_USER_ID` | The bot's Slack user ID — used to detect when the bot joins a channel |
 | `PCO_APP_ID` | Planning Center Personal Access Token App ID |
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
-| `APPROVAL_SLACK_USER_ID` | Your Slack user ID — only your checkmark triggers PCO writes |
-| `CAMPUS_NAME` | Display name shown in thread replies (e.g. "North Campus"). Useful when multiple workers share a channel. |
-| `SERVICE_TYPE_ID` | PCO service type ID. Found in the URL when viewing the service type in PCO. |
+
+Per-campus settings (`campus_name`, `service_type_id`, `approver_user_id`) are stored
+in KV under `campuses:CHANNEL_ID` and configured via `/plan-setup` — not secrets.

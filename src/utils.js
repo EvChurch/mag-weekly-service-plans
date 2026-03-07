@@ -15,8 +15,9 @@ export function nextSundayDate() {
 }
 
 /**
- * Returns the KV key for a given Sunday date string.
+ * Returns the KV key for a given Sunday date string and campus name.
+ * Key format: week:YYYY-MM-DD:CAMPUS_NAME
  */
-export function weekKey(sundayDate) {
-  return `week:${sundayDate}`;
+export function weekKey(sundayDate, campusName) {
+  return campusName ? `week:${sundayDate}:${campusName}` : `week:${sundayDate}`;
 }

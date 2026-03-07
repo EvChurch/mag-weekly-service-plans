@@ -1,8 +1,10 @@
 # mag-weekly-service-plans
 
-Cloudflare Worker that automates the North Campus weekly service plan workflow.
+Cloudflare Worker that automates the weekly service plan workflow for one or more campuses sharing a single Slack channel.
 
-When the service plan is posted in the private Slack channel, the Worker classifies it with Claude, fetches the matching Planning Center plan, proposes changes (notice titles, empty items, placeholder names), and posts an analysis reply in the thread. You can refine it by replying, then react with a checkmark to apply all changes to PCO. A Saturday cron acts as a safety net if no plan has arrived.
+When the service plan is posted in the channel, the Worker classifies it with Claude, then for each configured campus fetches the matching Planning Center plan, proposes changes (notice titles, empty items, placeholder names), and posts a separate analysis message. You can refine a campus's plan by replying in its thread, then react with a checkmark to apply changes to PCO. A Saturday cron nudges the channel if any campus hasn't received a plan yet.
+
+Campuses are configured via `/plan-setup` — no secrets required for per-campus settings.
 
 ---
 
@@ -59,38 +61,40 @@ package.json
 
 7. Left sidebar → **Basic Information** → **App Credentials** → **Signing Secret** → **Show** → `SLACK_SIGNING_SECRET`
 
+**Enable Interactivity** *(after deploying the Worker)*
+
+8. Left sidebar → **Interactivity & Shortcuts** → toggle on
+9. Paste your Worker URL into **Request URL** → **Save Changes**
+
+**Add slash command**
+
+10. Left sidebar → **Slash Commands** → **Create New Command**
+11. Command: `/plan-setup`, Request URL: your Worker URL, Short description: `Configure a campus`
+12. **Save**
+
 **Enable Event Subscriptions** *(after deploying the Worker)*
 
-8. Left sidebar → **Event Subscriptions** → toggle on
-9. Paste your Worker URL into **Request URL** (Slack will verify it automatically)
-10. Under **Subscribe to bot events** → **Add Bot Event**:
+13. Left sidebar → **Event Subscriptions** → toggle on
+14. Paste your Worker URL into **Request URL** (Slack will verify it automatically)
+15. Under **Subscribe to bot events** → **Add Bot Event**:
     - `message.groups`
     - `reaction_added`
-11. **Save Changes**
+    - `member_joined_channel`
+16. **Save Changes**
 
 **Invite the bot to your channel**
 
-12. In Slack, open `#weekly-service-plans` and type `/invite @Service Plan Bot`
+17. In Slack, open `#weekly-service-plans` and type `/invite @Service Plan Bot`
+    - The bot will post an ephemeral message prompting you to run `/plan-setup`
 
 **Find your IDs**
 
 - **Channel ID**: Right-click the channel → **View channel details** → scroll to bottom → `SLACK_CHANNEL_ID`
-- **Your user ID**: Click your profile picture → **Profile** → three-dot menu → **Copy member ID** → `APPROVAL_SLACK_USER_ID`
+- **Bot User ID**: In Slack, open the bot's profile → three-dot menu → **Copy member ID** → `SLACK_BOT_USER_ID`
 
 ---
 
-### 3. PCO Service Type ID
-
-The Worker needs to know which PCO service type to watch.
-
-To find the ID: log in to Planning Center → Services → open your service type → copy the number from the URL, e.g.:
-`https://services.planningcenteronline.com/service_types/12345678` → `12345678`
-
-This is your `SERVICE_TYPE_ID`.
-
----
-
-### 5. Cloudflare — KV Namespace
+### 3. Cloudflare — KV Namespace
 
 ```bash
 # Log in (opens browser)
@@ -105,25 +109,36 @@ Copy the printed `id` value into `wrangler.toml`, replacing `your-kv-namespace-i
 
 ---
 
-### 6. Set Secrets & Deploy
+### 4. Set Secrets & Deploy
 
 ```bash
 # Set all secrets (each command prompts you to paste the value)
 wrangler secret put SLACK_BOT_TOKEN
 wrangler secret put SLACK_SIGNING_SECRET
 wrangler secret put SLACK_CHANNEL_ID
+wrangler secret put SLACK_BOT_USER_ID      # Bot's Slack user ID (for join detection)
 wrangler secret put PCO_APP_ID
 wrangler secret put PCO_SECRET
 wrangler secret put ANTHROPIC_API_KEY
-wrangler secret put APPROVAL_SLACK_USER_ID
-wrangler secret put CAMPUS_NAME            # e.g. "North Campus" — shown in thread replies
-wrangler secret put SERVICE_TYPE_ID
 
 # Deploy
 wrangler deploy
 ```
 
-After deploying, copy the printed `*.workers.dev` URL and paste it into Slack's **Event Subscriptions → Request URL**.
+After deploying, copy the printed `*.workers.dev` URL and paste it into Slack's **Event Subscriptions → Request URL**, **Interactivity → Request URL**, and **Slash Commands → Request URL**.
+
+---
+
+### 5. Configure Campuses via Slack
+
+Campus config (name, PCO service type ID, approver) is stored in KV — not in secrets.
+
+In the Slack channel, run `/plan-setup` and fill in the modal:
+- **Campus Name** — e.g. `North Campus`
+- **PCO Service Type ID** — the number from the PCO URL (e.g. `12345678`)
+- **Approver** — the person whose checkmark reaction triggers PCO writes
+
+Run `/plan-setup` again with a different campus name to add another campus. Re-run with the same name to update an existing campus.
 
 ---
 
@@ -131,12 +146,16 @@ After deploying, copy the printed `*.workers.dev` URL and paste it into Slack's 
 
 | Test | Expected |
 |------|----------|
-| Post a service plan message in the channel | Bot replies in thread with proposed changes |
+| Run `/plan-setup` with a campus name | Modal appears; on submit, ephemeral "X configured." appears |
+| Run `/plan-setup` again with same campus name | Config updated (not duplicated) |
+| Run `/plan-setup` with a different campus name | Second campus added to KV |
+| Invite bot to channel (bot itself joins) | Ephemeral prompt to run `/plan-setup` (only if no campuses configured yet) |
+| Post a service plan message | Bot posts one analysis message per configured campus |
 | Post an unrelated message | Bot silently ignores it |
-| Reply to the bot's thread message | Bot edits its reply with refined plan |
-| React checkmark to bot's message | PCO updated, confirmation posted in thread |
-| `wrangler dev --test-scheduled` (no plan received that week) | Bot posts "has the plan been posted yet?" nudge |
-| `wrangler dev --test-scheduled` (plan already received) | Bot does nothing |
+| Reply to a campus's bot thread message | Bot edits that campus's reply with refined plan |
+| React checkmark to a campus's bot message | PCO updated for that campus, confirmation posted in thread |
+| `wrangler dev --test-scheduled` (at least one campus has no plan) | Bot posts one generic nudge |
+| `wrangler dev --test-scheduled` (all campuses have received plans) | Bot does nothing |
 
 ---
 

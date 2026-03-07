@@ -1,19 +1,24 @@
 /**
  * worker.js - Main Cloudflare Worker entry point
  *
- * Two entry points:
- *  1. fetch()     - Handles Slack Events API webhooks
- *  2. scheduled() - Saturday safety-net cron (checks if plan was received)
+ * Three entry points:
+ *  1. fetch()     - Handles Slack Events API webhooks, slash commands, and modal submissions
+ *  2. scheduled() - Saturday safety-net cron (checks if plan was received for any campus)
+ *
+ * Request type detection (all share the same URL):
+ *  - Events API:        application/json with `type` field
+ *  - Slash command:     application/x-www-form-urlencoded with `command` field
+ *  - Modal submission:  application/x-www-form-urlencoded with `payload` JSON
  */
 
-import { verifySlackSignature, postMessage, editMessage, postReply } from './slack.js';
+import { verifySlackSignature, postMessage, editMessage, postReply, openModal, postEphemeral } from './slack.js';
 import { fetchNextSundayPlan, applyChangesToPco } from './pco.js';
 import { classifyMessage, analyzePlan, refinePlan } from './claude.js';
 import { nextSundayDate, weekKey } from './utils.js';
 
 export default {
   // ─────────────────────────────────────────────
-  // HTTP HANDLER – Slack Events API
+  // HTTP HANDLER
   // ─────────────────────────────────────────────
   async fetch(request, env, ctx) {
     if (request.method !== 'POST') {
@@ -22,15 +27,42 @@ export default {
 
     const rawBody = await request.text();
 
-    // Verify the request really came from Slack
+    // Verify the request really came from Slack (applies to all payload types)
     const isValid = await verifySlackSignature(request, rawBody, env.SLACK_SIGNING_SECRET);
     if (!isValid) {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    const contentType = request.headers.get('Content-Type') ?? '';
+
+    // ── Slash command or interactive payload (modal submission) ──
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      const params = new URLSearchParams(rawBody);
+
+      if (params.has('command')) {
+        return handleSlashCommand(params, env);
+      }
+
+      if (params.has('payload')) {
+        const interactive = JSON.parse(params.get('payload'));
+        if (interactive.type === 'view_submission' && interactive.view?.callback_id === 'plan_setup') {
+          // Respond immediately to close the modal; do KV write + ephemeral async
+          ctx.waitUntil(
+            handleInteractivePayload(interactive, env).catch((err) =>
+              console.error('Interactive payload error:', err),
+            ),
+          );
+          return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+        }
+      }
+
+      return new Response('OK');
+    }
+
+    // ── Events API (application/json) ──
     const payload = JSON.parse(rawBody);
 
-    // ── URL verification handshake (one-time Slack setup) ──
+    // URL verification handshake (one-time Slack setup)
     if (payload.type === 'url_verification') {
       return new Response(JSON.stringify({ challenge: payload.challenge }), {
         headers: { 'Content-Type': 'application/json' },
@@ -57,18 +89,27 @@ export default {
   // ─────────────────────────────────────────────
   async scheduled(controller, env) {
     const sunday = nextSundayDate();
-    const key = weekKey(sunday);
-    const stored = await env.STATE.get(key, { type: 'json' });
+    const campuses = await env.STATE.get(`campuses:${env.SLACK_CHANNEL_ID}`, { type: 'json' });
 
-    if (stored?.plan_received) {
-      console.log(`Safety-net cron: plan already received for ${sunday}. Nothing to do.`);
+    if (!campuses || campuses.length === 0) {
+      console.log('Safety-net cron: no campuses configured.');
       return;
     }
 
-    const campus = env.CAMPUS_NAME ? `${env.CAMPUS_NAME}: ` : '';
+    const states = await Promise.all(
+      campuses.map((c) => env.STATE.get(weekKey(sunday, c.campus_name), { type: 'json' })),
+    );
+
+    const anyMissing = states.some((s) => !s?.plan_received);
+
+    if (!anyMissing) {
+      console.log(`Safety-net cron: all campuses have received plans for ${sunday}.`);
+      return;
+    }
+
     await postMessage(
       env.SLACK_CHANNEL_ID,
-      `${campus}Hey, just checking — has the service plan for this Sunday been posted yet? I haven't seen it come through.`,
+      `Hey, just checking — has the service plan for this Sunday been posted yet? I haven't seen it come through.`,
       env.SLACK_BOT_TOKEN,
     );
 
@@ -80,10 +121,17 @@ export default {
 // EVENT DISPATCHER
 // ─────────────────────────────────────────────
 async function handleEvent(event, env) {
-  // Only care about messages in our target channel
-  if (event.channel !== env.SLACK_CHANNEL_ID) return;
+  // reaction_added has the channel in event.item.channel, not event.channel
+  const channel = event.channel ?? event.item?.channel;
+  if (channel !== env.SLACK_CHANNEL_ID) return;
 
-  // ── New message in the group channel ──
+  // ── Bot invited to channel ──
+  if (event.type === 'member_joined_channel') {
+    await handleMemberJoined(event, env);
+    return;
+  }
+
+  // ── New top-level message ──
   if (event.type === 'message' && event.subtype == null && !event.thread_ts) {
     await handleNewChannelMessage(event, env);
     return;
@@ -103,12 +151,111 @@ async function handleEvent(event, env) {
 }
 
 // ─────────────────────────────────────────────
+// MEMBER JOINED CHANNEL
+// ─────────────────────────────────────────────
+async function handleMemberJoined(event, env) {
+  // Only act when the bot itself joins (not when other users join)
+  if (event.user !== env.SLACK_BOT_USER_ID) return;
+
+  // Only prompt if no campuses are configured yet for this channel
+  const campuses = await env.STATE.get(`campuses:${event.channel}`, { type: 'json' });
+  if (campuses && campuses.length > 0) return;
+
+  if (!event.inviter) return;
+
+  await postEphemeral(
+    event.channel,
+    event.inviter,
+    "I've been added to this channel. Run `/plan-setup` to configure a campus.",
+    env.SLACK_BOT_TOKEN,
+  );
+}
+
+// ─────────────────────────────────────────────
+// SLASH COMMAND — /plan-setup
+// ─────────────────────────────────────────────
+async function handleSlashCommand(params, env) {
+  const triggerId = params.get('trigger_id');
+  const channelId = params.get('channel_id');
+
+  const modal = {
+    type: 'modal',
+    callback_id: 'plan_setup',
+    title: { type: 'plain_text', text: 'Campus Setup' },
+    submit: { type: 'plain_text', text: 'Save' },
+    // Pass the channel ID through so the submission handler knows where to save
+    private_metadata: channelId,
+    blocks: [
+      {
+        type: 'input',
+        block_id: 'campus_name',
+        label: { type: 'plain_text', text: 'Campus Name' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'value',
+          placeholder: { type: 'plain_text', text: 'e.g. North Campus' },
+        },
+      },
+      {
+        type: 'input',
+        block_id: 'service_type_id',
+        label: { type: 'plain_text', text: 'PCO Service Type ID' },
+        element: {
+          type: 'plain_text_input',
+          action_id: 'value',
+          placeholder: { type: 'plain_text', text: 'Found in the PCO URL (e.g. 12345678)' },
+        },
+      },
+      {
+        type: 'input',
+        block_id: 'approver',
+        label: { type: 'plain_text', text: 'Approver' },
+        element: {
+          type: 'users_select',
+          action_id: 'value',
+          placeholder: { type: 'plain_text', text: 'Select who approves PCO changes' },
+        },
+      },
+    ],
+  };
+
+  await openModal(triggerId, modal, env.SLACK_BOT_TOKEN);
+  return new Response('', { status: 200 });
+}
+
+// ─────────────────────────────────────────────
+// INTERACTIVE PAYLOAD — modal submission
+// ─────────────────────────────────────────────
+async function handleInteractivePayload(payload, env) {
+  const channelId = payload.view.private_metadata;
+  const values = payload.view.state.values;
+
+  const campusName = values.campus_name.value.value;
+  const serviceTypeId = values.service_type_id.value.value;
+  const approverUserId = values.approver.value.selected_user;
+
+  // Load existing campuses and upsert by campus name
+  const campuses = (await env.STATE.get(`campuses:${channelId}`, { type: 'json' })) ?? [];
+  const idx = campuses.findIndex((c) => c.campus_name === campusName);
+  const entry = { campus_name: campusName, service_type_id: serviceTypeId, approver_user_id: approverUserId };
+
+  if (idx >= 0) {
+    campuses[idx] = entry;
+  } else {
+    campuses.push(entry);
+  }
+
+  await env.STATE.put(`campuses:${channelId}`, JSON.stringify(campuses));
+  await postEphemeral(channelId, payload.user.id, `${campusName} configured.`, env.SLACK_BOT_TOKEN);
+}
+
+// ─────────────────────────────────────────────
 // NEW CHANNEL MESSAGE
 // ─────────────────────────────────────────────
 async function handleNewChannelMessage(event, env) {
   const text = event.text ?? '';
 
-  // Step 1: cheap classification – is this the weekly plan?
+  // Step 1: cheap classification — is this the weekly plan?
   const isServicePlan = await classifyMessage(text, env.ANTHROPIC_API_KEY);
   if (!isServicePlan) {
     console.log('Classification: not a service plan. Ignoring.');
@@ -117,27 +264,28 @@ async function handleNewChannelMessage(event, env) {
 
   console.log('Classification: service plan detected. Running full analysis.');
 
-  // Step 2: fetch PCO plan
+  // Step 2: load all configured campuses for this channel
+  const campuses = await env.STATE.get(`campuses:${event.channel}`, { type: 'json' });
+  if (!campuses || campuses.length === 0) {
+    console.log('No campuses configured for this channel.');
+    return;
+  }
+
   const sunday = nextSundayDate();
-  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, env.SERVICE_TYPE_ID);
 
-  // Step 3: full analysis via Claude
+  // Step 3: process each campus in parallel
+  await Promise.all(campuses.map((campus) => processCampusPlan(text, event, campus, sunday, env)));
+}
+
+async function processCampusPlan(text, event, campus, sunday, env) {
+  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, campus.service_type_id);
   const analysis = await analyzePlan(text, pcoPlan, env.ANTHROPIC_API_KEY);
+  const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, campus.campus_name);
 
-  // Step 4: build the reply text
-  const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, env.CAMPUS_NAME);
+  const botReply = await postMessage(event.channel, replyText, env.SLACK_BOT_TOKEN);
 
-  // Step 5: post as a new top-level message — this becomes the thread root for refinement
-  const botReply = await postMessage(
-    env.SLACK_CHANNEL_ID,
-    replyText,
-    env.SLACK_BOT_TOKEN,
-  );
-
-  // Step 6: persist to KV
-  const key = weekKey(sunday);
   await env.STATE.put(
-    key,
+    weekKey(sunday, campus.campus_name),
     JSON.stringify({
       plan_received: true,
       slack_channel_id: event.channel,
@@ -147,6 +295,10 @@ async function handleNewChannelMessage(event, env) {
       proposed_changes: analysis.proposed_changes,
       manual_steps: analysis.manual_steps,
       applied: false,
+      // Store campus config in state for use during thread replies and reactions
+      campus_name: campus.campus_name,
+      service_type_id: campus.service_type_id,
+      approver_user_id: campus.approver_user_id,
     }),
   );
 }
@@ -159,17 +311,13 @@ async function handleThreadReply(event, env) {
   if (event.bot_id) return;
 
   const sunday = nextSundayDate();
-  const key = weekKey(sunday);
-  const stored = await env.STATE.get(key, { type: 'json' });
+  const { stored, key } = await findCampusStateByTs(event.channel, event.thread_ts, sunday, env);
 
   if (!stored) return;
 
-  // Only respond to replies in the bot's thread
-  if (event.thread_ts !== stored.bot_reply_ts) return;
-
   if (stored.applied) {
     await postReply(
-      env.SLACK_CHANNEL_ID,
+      event.channel,
       event.thread_ts,
       'This plan has already been applied to Planning Center.',
       env.SLACK_BOT_TOKEN,
@@ -177,51 +325,39 @@ async function handleThreadReply(event, env) {
     return;
   }
 
-  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, env.SERVICE_TYPE_ID);
+  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, stored.service_type_id);
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
-  // Update the bot's message with revised plan
-  const updatedText = formatAnalysisReply(refined, pcoPlan, sunday, env.CAMPUS_NAME) +
+  const updatedText =
+    formatAnalysisReply(refined, pcoPlan, sunday, stored.campus_name) +
     '\n\n_Plan updated based on your feedback._';
 
-  await editMessage(
-    env.SLACK_CHANNEL_ID,
-    stored.bot_reply_ts,
-    updatedText,
-    env.SLACK_BOT_TOKEN,
-  );
+  await editMessage(event.channel, stored.bot_reply_ts, updatedText, env.SLACK_BOT_TOKEN);
 
-  // Persist updated plan
-  await env.STATE.put(
-    key,
-    JSON.stringify({
-      ...stored,
-      proposed_changes: refined.proposed_changes,
-      manual_steps: refined.manual_steps,
-    }),
-  );
+  await env.STATE.put(key, JSON.stringify({
+    ...stored,
+    proposed_changes: refined.proposed_changes,
+    manual_steps: refined.manual_steps,
+  }));
 }
 
 // ─────────────────────────────────────────────
 // REACTION ADDED (checkmark approval)
 // ─────────────────────────────────────────────
 async function handleReaction(event, env) {
-  // Only respond to white_check_mark or heavy_check_mark from the approved user
   const isCheckmark = event.reaction === 'white_check_mark' || event.reaction === 'heavy_check_mark';
   if (!isCheckmark) return;
-  if (event.user !== env.APPROVAL_SLACK_USER_ID) return;
 
+  const channel = event.item?.channel;
   const sunday = nextSundayDate();
-  const key = weekKey(sunday);
-  const stored = await env.STATE.get(key, { type: 'json' });
+  const { stored, key } = await findCampusStateByTs(channel, event.item?.ts, sunday, env);
 
   if (!stored) return;
   if (stored.applied) return;
 
-  // Verify the reaction is on the bot's reply message
-  if (event.item?.ts !== stored.bot_reply_ts) return;
+  // Only the configured approver for this campus can trigger PCO writes
+  if (event.user !== stored.approver_user_id) return;
 
-  // Apply all changes to PCO
   const results = await applyChangesToPco(
     stored.pco_plan_id,
     stored.proposed_changes,
@@ -229,20 +365,41 @@ async function handleReaction(event, env) {
     env.PCO_SECRET,
   );
 
-  // Post confirmation
   const summary = results
     .map((r) => (r.ok ? `- Applied: ${r.description}` : `- FAILED: ${r.description} (${r.error})`))
     .join('\n');
 
   await postReply(
-    env.SLACK_CHANNEL_ID,
+    channel,
     stored.bot_reply_ts,
     `Changes applied to Planning Center:\n${summary}`,
     env.SLACK_BOT_TOKEN,
   );
 
-  // Mark as applied
   await env.STATE.put(key, JSON.stringify({ ...stored, applied: true }));
+}
+
+// ─────────────────────────────────────────────
+// FIND CAMPUS STATE BY BOT MESSAGE TIMESTAMP
+// ─────────────────────────────────────────────
+
+/**
+ * Searches all configured campuses for the one whose bot_reply_ts matches `ts`.
+ * Returns { stored, key } for the matching campus, or { stored: null, key: null }.
+ */
+async function findCampusStateByTs(channelId, ts, sunday, env) {
+  const campuses = await env.STATE.get(`campuses:${channelId}`, { type: 'json' });
+  if (!campuses || campuses.length === 0) return { stored: null, key: null };
+
+  for (const campus of campuses) {
+    const key = weekKey(sunday, campus.campus_name);
+    const state = await env.STATE.get(key, { type: 'json' });
+    if (state?.bot_reply_ts === ts) {
+      return { stored: state, key };
+    }
+  }
+
+  return { stored: null, key: null };
 }
 
 // ─────────────────────────────────────────────

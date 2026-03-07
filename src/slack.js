@@ -88,6 +88,20 @@ export async function editMessage(channelId, messageTs, text, botToken) {
 }
 
 /**
+ * Open a Slack modal using a trigger_id from a slash command.
+ */
+export async function openModal(triggerId, modal, botToken) {
+  return slackCall('views.open', botToken, { trigger_id: triggerId, view: modal });
+}
+
+/**
+ * Post an ephemeral message visible only to a specific user in a channel.
+ */
+export async function postEphemeral(channelId, userId, text, botToken) {
+  return slackCall('chat.postEphemeral', botToken, { channel: channelId, user: userId, text });
+}
+
+/**
  * Fetch messages from a channel (for lookups if needed).
  */
 export async function getChannelHistory(channelId, botToken, { limit = 10, oldest } = {}) {

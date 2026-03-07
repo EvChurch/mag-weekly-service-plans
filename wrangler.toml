@@ -1,4 +1,4 @@
-name = "church-automation"
+name = "mag-weekly-service-plans"
 main = "src/worker.js"
 compatibility_date = "2024-01-01"
 
