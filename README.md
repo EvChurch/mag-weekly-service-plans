@@ -96,36 +96,42 @@ package.json
 
 ### 3. Cloudflare — KV Namespace
 
-```bash
-# Log in (opens browser)
-npm install -g wrangler
-wrangler login
-
-# Create the KV namespace
-wrangler kv:namespace create STATE
-```
-
-Copy the printed `id` value into `wrangler.toml`, replacing `your-kv-namespace-id`.
+1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **KV**
+2. Click **Create a namespace**, name it `STATE` → **Add**
+3. Copy the namespace ID and paste it into `wrangler.toml`, replacing `your-kv-namespace-id`
+4. Commit and push — the GitHub Actions deploy will pick it up
 
 ---
 
-### 4. Set Secrets & Deploy
+### 4. Deploy via GitHub Actions
 
-```bash
-# Set all secrets (each command prompts you to paste the value)
-wrangler secret put SLACK_BOT_TOKEN
-wrangler secret put SLACK_SIGNING_SECRET
-wrangler secret put SLACK_CHANNEL_ID
-wrangler secret put SLACK_BOT_USER_ID      # Bot's Slack user ID (for join detection)
-wrangler secret put PCO_APP_ID
-wrangler secret put PCO_SECRET
-wrangler secret put ANTHROPIC_API_KEY
+Deployment runs automatically on every push to `main`. For the first deploy:
 
-# Deploy
-wrangler deploy
-```
+1. Go to the repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+2. Add a secret named `CLOUDFLARE_API_TOKEN` — create one at **Cloudflare dashboard → My Profile → API Tokens** with the **Edit Cloudflare Workers** template
+3. Push any change to `main` to trigger the first deploy
 
-After deploying, copy the printed `*.workers.dev` URL and paste it into Slack's **Event Subscriptions → Request URL**, **Interactivity → Request URL**, and **Slash Commands → Request URL**.
+**After the first deploy**, your Worker URL (`*.workers.dev`) will appear in the GitHub Actions log. Paste it into:
+- Slack app → **Interactivity & Shortcuts → Request URL**
+- Slack app → **Slash Commands → `/plan-setup` → Request URL**
+- Slack app → **Event Subscriptions → Request URL**
+
+### 5. Set Worker Secrets
+
+Worker secrets are set in the Cloudflare dashboard — not via wrangler CLI.
+
+1. Go to **Cloudflare dashboard → Workers & Pages** → click your worker → **Settings** → **Variables**
+2. Under **Environment Variables**, add each of the following as an **encrypted** variable:
+
+| Secret | Value |
+|--------|-------|
+| `SLACK_BOT_TOKEN` | Bot User OAuth Token (`xoxb-...`) |
+| `SLACK_SIGNING_SECRET` | From Slack app → Basic Information → App Credentials |
+| `SLACK_CHANNEL_ID` | ID of the private channel the bot is in |
+| `SLACK_BOT_USER_ID` | Bot's Slack user ID |
+| `PCO_APP_ID` | Planning Center Personal Access Token App ID |
+| `PCO_SECRET` | Planning Center Personal Access Token Secret |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
 
 ---
 
@@ -154,8 +160,8 @@ Run `/plan-setup` again with a different campus name to add another campus. Re-r
 | Post an unrelated message | Bot silently ignores it |
 | Reply to a campus's bot thread message | Bot edits that campus's reply with refined plan |
 | React checkmark to a campus's bot message | PCO updated for that campus, confirmation posted in thread |
-| `wrangler dev --test-scheduled` (at least one campus has no plan) | Bot posts one generic nudge |
-| `wrangler dev --test-scheduled` (all campuses have received plans) | Bot does nothing |
+| Saturday cron fires (at least one campus has no plan) | Bot posts one generic nudge |
+| Saturday cron fires (all campuses have received plans) | Bot does nothing |
 
 ---
 
