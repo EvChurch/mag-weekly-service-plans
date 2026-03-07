@@ -102,6 +102,17 @@ export async function postEphemeral(channelId, userId, text, botToken) {
 }
 
 /**
+ * Returns true if the bot is a member of the given channel.
+ */
+export async function isBotInChannel(channelId, botToken) {
+  const res = await fetch(`${SLACK_API}/conversations.info?channel=${encodeURIComponent(channelId)}`, {
+    headers: { Authorization: `Bearer ${botToken}` },
+  });
+  const data = await res.json();
+  return data.ok && data.channel?.is_member === true;
+}
+
+/**
  * Fetch messages from a channel (for lookups if needed).
  */
 export async function getChannelHistory(channelId, botToken, { limit = 10, oldest } = {}) {

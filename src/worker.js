@@ -11,7 +11,7 @@
  *  - Modal submission:  application/x-www-form-urlencoded with `payload` JSON
  */
 
-import { verifySlackSignature, postMessage, editMessage, postReply, openModal, postEphemeral } from './slack.js';
+import { verifySlackSignature, postMessage, editMessage, postReply, openModal, postEphemeral, isBotInChannel } from './slack.js';
 import { fetchNextSundayPlan, applyChangesToPco } from './pco.js';
 import { classifyMessage, analyzePlan, refinePlan } from './claude.js';
 import { nextSundayDate, weekKey } from './utils.js';
@@ -252,7 +252,9 @@ async function handleInteractivePayload(payload, env) {
 
   await env.STATE.put(`campuses:${channelId}`, JSON.stringify(campuses));
 
-  // Return a success view — postEphemeral won't work if the bot isn't in the channel
+  // Check if the bot is actually in the channel
+  const botInChannel = await isBotInChannel(channelId, env.SLACK_BOT_TOKEN);
+
   return {
     response_action: 'update',
     view: {
@@ -262,7 +264,12 @@ async function handleInteractivePayload(payload, env) {
       blocks: [
         {
           type: 'section',
-          text: { type: 'mrkdwn', text: `:white_check_mark: *${campusName}* configured.` },
+          text: {
+            type: 'mrkdwn',
+            text: botInChannel
+              ? `:white_check_mark: *${campusName}* configured.`
+              : `:white_check_mark: *${campusName}* configured.\n\n:warning: I'm not in this channel yet — run \`/invite @Service Plan Bot\` in the channel so I can receive messages and post replies.`,
+          },
         },
       ],
     },
