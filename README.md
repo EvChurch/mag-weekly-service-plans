@@ -29,7 +29,7 @@ package.json
 
 1. Go to [api.planningcenteronline.com/oauth/applications](https://api.planningcenteronline.com/oauth/applications) while logged in
 2. Scroll to **Personal Access Tokens** → **+ New Personal Access Token**
-3. Name it (e.g. `church-automation`)
+3. Name it (e.g. `mag-weekly-service-plans`)
 4. Copy the **Application ID** → `PCO_APP_ID`
 5. Copy the **Secret** → `PCO_SECRET`
 
@@ -37,7 +37,15 @@ package.json
 
 ---
 
-### 2. Slack App — Bot Token + Signing Secret
+### 2. Anthropic — API Key
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) and sign in
+2. Left sidebar → **API Keys** → **Create Key**
+3. Name it (e.g. `mag-weekly-service-plans`) and copy the key → `ANTHROPIC_API_KEY`
+
+---
+
+### 3. Slack App — Bot Token + Signing Secret
 
 **Create the app**
 
@@ -84,17 +92,16 @@ package.json
 
 **Invite the bot to your channel**
 
-17. In Slack, open `#weekly-service-plans` and type `/invite @Service Plan Bot`
+17. In Slack, open your service plans channel and type `/invite @Service Plan Bot`
     - The bot will post an ephemeral message prompting you to run `/plan-setup`
 
-**Find your IDs**
+**Find your Bot User ID**
 
-- **Channel ID**: Right-click the channel → **View channel details** → scroll to bottom → `SLACK_CHANNEL_ID`
-- **Bot User ID**: In Slack, open the bot's profile → three-dot menu → **Copy member ID** → `SLACK_BOT_USER_ID`
+18. In Slack, open the bot's profile → three-dot menu → **Copy member ID** → `SLACK_BOT_USER_ID`
 
 ---
 
-### 3. Cloudflare — KV Namespace
+### 4. Cloudflare — KV Namespace
 
 1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **KV**
 2. Click **Create a namespace** (the name doesn't matter) → **Add**
@@ -103,29 +110,14 @@ package.json
 
 ---
 
-### 4. Deploy via GitHub Actions
+### 5. Deploy via GitHub Actions
 
-Deployment runs automatically on every push to `main`. For the first deploy:
-
-1. Go to the repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-2. Add `CLOUDFLARE_API_TOKEN` — create one at **Cloudflare dashboard → My Profile → API Tokens** with the **Edit Cloudflare Workers** template
-3. Add `CLOUDFLARE_ACCOUNT_ID` — found in the Cloudflare dashboard URL (`dash.cloudflare.com/<account-id>`) or in the sidebar on any Workers & Pages page
-4. Push any change to `main` to trigger the first deploy
-
-**After the first deploy**, your Worker URL (`*.workers.dev`) will appear in the GitHub Actions log. Paste it into:
-- Slack app → **Interactivity & Shortcuts → Request URL**
-- Slack app → **Slash Commands → `/plan-setup` → Request URL**
-- Slack app → **Event Subscriptions → Request URL**
-
-### 5. Set Worker Secrets
-
-Worker secrets are set in the Cloudflare dashboard — not via wrangler CLI.
-
-1. Go to **Cloudflare dashboard → Workers & Pages** → click your worker → **Settings** → **Variables**
-2. Under **Environment Variables**, add each of the following as an **encrypted** variable:
+Deployment runs automatically on every push to `main`. Add the following as GitHub Actions secrets (**repo → Settings → Secrets and variables → Actions → New repository secret**):
 
 | Secret | Value |
 |--------|-------|
+| `CLOUDFLARE_API_TOKEN` | Create at **Cloudflare dashboard → My Profile → API Tokens** with the **Edit Cloudflare Workers** template |
+| `CLOUDFLARE_ACCOUNT_ID` | Found in the Cloudflare dashboard URL or sidebar on any Workers & Pages page |
 | `SLACK_BOT_TOKEN` | Bot User OAuth Token (`xoxb-...`) |
 | `SLACK_SIGNING_SECRET` | From Slack app → Basic Information → App Credentials |
 | `SLACK_BOT_USER_ID` | Bot's Slack user ID |
@@ -133,9 +125,11 @@ Worker secrets are set in the Cloudflare dashboard — not via wrangler CLI.
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 
+Push any change to `main` to trigger the first deploy. Your Worker URL (`mag-weekly-service-plans.ev-church.workers.dev`) should then be pasted into the Slack app settings (steps 8–16 above).
+
 ---
 
-### 5. Configure Campuses via Slack
+### 6. Configure Campuses via Slack
 
 Campus config (name, PCO service type ID, approver) is stored in KV — not in secrets.
 
@@ -159,9 +153,7 @@ Run `/plan-setup` again with a different campus name to add another campus. Re-r
 | Post a service plan message | Bot posts one analysis message per configured campus |
 | Post an unrelated message | Bot silently ignores it |
 | Reply to a campus's bot thread message | Bot edits that campus's reply with refined plan |
-| React checkmark to a campus's bot message | PCO updated for that campus, confirmation posted in thread |
-| Saturday cron fires (at least one campus has no plan) | Bot posts one generic nudge |
-| Saturday cron fires (all campuses have received plans) | Bot does nothing |
+| React checkmark to a campus's bot message | PCO changes applied, confirmation posted in thread |
 
 ---
 
