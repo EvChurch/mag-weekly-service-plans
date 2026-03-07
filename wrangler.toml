@@ -7,6 +7,9 @@ workers_dev = true
 crons = ["0 3 * * 6"]   # Saturday 03:00 UTC = 4:00 PM NZDT (safety net)
 # Switch to "0 4 * * 6" during NZ Standard Time (NZST = UTC+12, April–September)
 
+[observability]
+enabled = true
+
 [[kv_namespaces]]
 binding = "STATE"
 id = "c8ce227c8d6f40f8ba80256c8a2defab"
