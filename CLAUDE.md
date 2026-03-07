@@ -221,3 +221,4 @@ Approval is gated on `APPROVAL_SLACK_USER_ID` — only reactions from that user 
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
 | `APPROVAL_SLACK_USER_ID` | Your Slack user ID — only your checkmark triggers PCO writes |
+| `NORTH_CAMPUS_SERVICE_TYPE_ID` | PCO service type ID for the North service inside the NS Mag folder. If not set, falls back to name-matching on "North". |

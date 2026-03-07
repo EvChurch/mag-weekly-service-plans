@@ -79,7 +79,22 @@ package.json
 
 ---
 
-### 3. Cloudflare — KV Namespace
+### 3. PCO Service Type ID
+
+The Worker needs the ID of the "North" service type inside the NS Mag folder in PCO.
+The easiest way to find it:
+
+1. Log in to Planning Center and open Services
+2. Navigate to the North service type
+3. Look at the URL — it will contain the ID, e.g.:
+   `https://services.planningcenteronline.com/service_types/12345678`
+4. Copy that number — this is your `NORTH_CAMPUS_SERVICE_TYPE_ID`
+
+If this secret is not set, the Worker will fall back to searching for a service type named "North".
+
+---
+
+### 5. Cloudflare — KV Namespace
 
 ```bash
 # Log in (opens browser)
@@ -94,7 +109,7 @@ Copy the printed `id` value into `wrangler.toml`, replacing `your-kv-namespace-i
 
 ---
 
-### 4. Set Secrets & Deploy
+### 6. Set Secrets & Deploy
 
 ```bash
 # Set all secrets (each command prompts you to paste the value)
@@ -105,6 +120,7 @@ wrangler secret put PCO_APP_ID
 wrangler secret put PCO_SECRET
 wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put APPROVAL_SLACK_USER_ID
+wrangler secret put NORTH_CAMPUS_SERVICE_TYPE_ID
 
 # Deploy
 wrangler deploy

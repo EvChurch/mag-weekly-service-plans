@@ -20,15 +20,19 @@ const PCO_BASE = 'https://api.planningcenteronline.com/services/v2';
  *   roster_issues: [ "Worship Leader: no one scheduled", ... ]
  * }
  */
-export async function fetchNextSundayPlan(appId, secret) {
+export async function fetchNextSundayPlan(appId, secret, serviceTypeId) {
   // 1. Find North Campus service type
-  const serviceTypeId = await findNorthCampusServiceTypeId(appId, secret);
+  serviceTypeId = await findNorthCampusServiceTypeId(appId, secret, serviceTypeId);
 
   // 2. Get the next upcoming plan
   const plan = await getNextPlan(serviceTypeId, appId, secret);
 
   // 3. Get items
-  const items = await getAllPages(`${PCO_BASE}/service_types/${serviceTypeId}/plans/${plan.id}/items?include=item_notes&per_page=100`, appId, secret);
+  const items = await getAllPages(
+    `${PCO_BASE}/service_types/${serviceTypeId}/plans/${plan.id}/items?include=item_notes&per_page=100`,
+    appId,
+    secret,
+  );
 
   // 4. Get teams and their members
   const teams = await getPlanTeams(plan.id, serviceTypeId, appId, secret);
@@ -137,13 +141,21 @@ function describeChange(change) {
 // SERVICE TYPE LOOKUP
 // ─────────────────────────────────────────────
 
-async function findNorthCampusServiceTypeId(appId, secret) {
+async function findNorthCampusServiceTypeId(appId, secret, serviceTypeId) {
+  // Prefer an explicitly configured ID (set via NORTH_CAMPUS_SERVICE_TYPE_ID secret)
+  if (serviceTypeId) return serviceTypeId;
+
+  // Fallback: search by name. Looks for a service type named "North" (case-insensitive).
+  // In PCO this lives inside the NS Mag folder but the API returns all service types flat.
   const data = await getAllPages(`${PCO_BASE}/service_types?per_page=100`, appId, secret);
   const nc = data.find((st) =>
-    st.attributes.name?.toLowerCase().includes('north campus'),
+    st.attributes.name?.toLowerCase() === 'north',
   );
   if (!nc) {
-    throw new Error('Could not find a North Campus service type in PCO');
+    throw new Error(
+      'Could not find the North Campus service type in PCO. ' +
+      'Set the NORTH_CAMPUS_SERVICE_TYPE_ID secret to avoid name-based lookup.',
+    );
   }
   return nc.id;
 }
