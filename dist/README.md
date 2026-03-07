@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "church-automation" generated at 2026-03-07T12:05:37.139Z.

@@ -1,0 +1,11 @@
+name = "church-automation"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+[triggers]
+crons = ["0 3 * * 6"]   # Saturday 03:00 UTC = 4:00 PM NZDT (safety net)
+# Switch to "0 4 * * 6" during NZ Standard Time (NZST = UTC+12, April–September)
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "your-kv-namespace-id"
