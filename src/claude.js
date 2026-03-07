@@ -127,7 +127,12 @@ Automated rules you must apply:
 1. Notice title fix: If an item is titled "Notice 1", "Notice 2", or "Notice 3" and its
    description starts with a real title on the first line, propose moving that first line to
    the item title and removing it from the description.
-2. Empty notice removal: If a "Notice 1/2/3" item has no description, propose deleting it.
+2. Empty notice removal: If a "Notice 1/2/3" item has no description, check whether ALL
+   notices are empty. If ALL notices are empty, this means the communications person has not
+   yet filled them in — do not propose deletion, instead add a manual step:
+   "All notices are empty — check that the communications person has finalised the notices
+   before Sunday." If only SOME notices are empty (others have descriptions), propose
+   deleting only the empty ones.
 3. Empty highlight removal: If a "Highlight" item has no content, propose deleting it.
 4. Pray-er placeholder: If an item titled "Prayer" has a [...] placeholder in its
    description, propose replacing only the [...] with the volunteer assigned to the

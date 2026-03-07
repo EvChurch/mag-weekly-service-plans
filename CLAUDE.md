@@ -138,7 +138,8 @@ These are applied without Claude — they are reliable enough to automate direct
 | Rule | Trigger | Action |
 |------|---------|--------|
 | Notice title fix | Item titled "Notice 1/2/3", first line of description is real title | Move first line → item title; remove from description |
-| Empty notice removal | "Notice 1/2/3" with no description | Delete item from plan |
+| Empty notice removal | Some "Notice 1/2/3" items have no description, but others do | Delete the empty ones |
+| All notices empty | All of Notice 1, 2, and 3 have no description | Flag as manual step — communications person has likely not filled them in yet |
 | Highlight spot removal | Highlight item with no content | Delete item from plan |
 | Pray-er placeholder | Item titled "Prayer" has [...] placeholder in its **description** | Lookup "Pray-er" role (upfront team) → replace placeholder in description with volunteer name |
 | Bible reading placeholder | Item **description** contains [...] placeholder, item is bible reading | Lookup "Bible Reader" role (upfront team) → replace placeholder in description |
