@@ -184,7 +184,8 @@ Return ONLY a JSON object in this exact shape — no markdown, no explanation:
 }
 
 Manual steps must be concise action items written in imperative form (e.g. "Add X after Y", "Brief the MC on Z").
-Do not use phrasing like "Slack message requests", "The plan mentions", or any other preamble — just state what needs to be done.`;
+Do not use phrasing like "Slack message requests", "The plan mentions", or any other preamble — just state what needs to be done.
+If a manual step includes a URL, format it as a Slack link: <https://example.com|video link> — never paste a raw URL.`;
 }
 
 function buildAnalysisUserPrompt(slackMessage, pcoPlan) {
