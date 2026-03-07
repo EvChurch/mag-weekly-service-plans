@@ -206,7 +206,7 @@ function buildRosterIssues(teams) {
     'Kids Ministry',
     'Bible Reader',
     'Preacher',
-    'Prayer',
+    'Pray-er',
   ];
 
   for (const team of teams) {
