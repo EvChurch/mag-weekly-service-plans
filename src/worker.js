@@ -312,7 +312,7 @@ async function handleNewChannelMessage(event, env, campuses) {
 async function processCampusPlan(text, event, campus, sunday, env) {
   const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, campus.service_type_id);
   const analysis = await analyzePlan(text, pcoPlan, env.ANTHROPIC_API_KEY);
-  const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, campus.campus_name, campus.service_type_id);
+  const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, campus.campus_name);
 
   const botReply = await postMessage(event.channel, replyText, env.SLACK_BOT_TOKEN);
 
@@ -361,7 +361,7 @@ async function handleThreadReply(event, env) {
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
   const updatedText =
-    formatAnalysisReply(refined, pcoPlan, sunday, stored.campus_name, stored.service_type_id) +
+    formatAnalysisReply(refined, pcoPlan, sunday, stored.campus_name) +
     '\n\n_Plan updated based on your feedback._';
 
   await editMessage(event.channel, stored.bot_reply_ts, updatedText, env.SLACK_BOT_TOKEN);
@@ -441,12 +441,12 @@ function toTitleCase(str) {
   return str.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 }
 
-function formatAnalysisReply(analysis, pcoPlan, sunday, campusName, serviceTypeId) {
+function formatAnalysisReply(analysis, pcoPlan, sunday, campusName) {
   const { proposed_changes = [], manual_steps = [], roster_issues = [] } = analysis;
 
   const campusDisplay = campusName ? toTitleCase(campusName) : '';
   const campusPrefix = campusDisplay ? `${campusDisplay}: ` : '';
-  const pcoUrl = `https://services.planningcenteronline.com/service_types/${serviceTypeId}/plans/${pcoPlan.id}`;
+  const pcoUrl = `https://services.planningcenteronline.com/plans/${pcoPlan.id}`;
   const lines = [`*${campusPrefix}Service Plan Analysis — <${pcoUrl}|Sunday ${sunday}>*\n`];
 
   lines.push('*Proposed Changes* (react :white_check_mark: to apply to Planning Center):');
