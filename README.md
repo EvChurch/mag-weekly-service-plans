@@ -108,7 +108,7 @@ package.json
 Deployment runs automatically on every push to `main`. For the first deploy:
 
 1. Go to the repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-2. Add a secret named `CLOUDFLARE_API_TOKEN` — create one at **Cloudflare dashboard → My Profile → API Tokens** with the **Edit Cloudflare Workers** template
+2. Add a secret named `CLOUDFLARE_API_TOKEN` — use an **Account API Token** (not a personal/profile token) so deploys keep working if the person who created it leaves. Create one at **Cloudflare dashboard → Manage Account → API Tokens** with the **Edit Cloudflare Workers** template
 3. Push any change to `main` to trigger the first deploy
 
 **After the first deploy**, your Worker URL (`*.workers.dev`) will appear in the GitHub Actions log. Paste it into:
