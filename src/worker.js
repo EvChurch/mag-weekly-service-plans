@@ -128,15 +128,21 @@ export default {
 // EVENT DISPATCHER
 // ─────────────────────────────────────────────
 async function handleEvent(event, env) {
-  // ── Bot invited to channel ──
+  const channel = event.channel ?? event.item?.channel;
+
+  // ── Bot invited to channel — always handle so we can prompt /plan-setup ──
   if (event.type === 'member_joined_channel') {
     await handleMemberJoined(event, env);
     return;
   }
 
+  // Ignore events from channels with no campuses configured
+  const campuses = await env.STATE.get(`campuses:${channel}`, { type: 'json' });
+  if (!campuses || campuses.length === 0) return;
+
   // ── New top-level message ──
   if (event.type === 'message' && event.subtype == null && !event.thread_ts) {
-    await handleNewChannelMessage(event, env);
+    await handleNewChannelMessage(event, env, campuses);
     return;
   }
 
@@ -255,7 +261,7 @@ async function handleInteractivePayload(payload, env) {
 // ─────────────────────────────────────────────
 // NEW CHANNEL MESSAGE
 // ─────────────────────────────────────────────
-async function handleNewChannelMessage(event, env) {
+async function handleNewChannelMessage(event, env, campuses) {
   const text = event.text ?? '';
 
   // Step 1: cheap classification — is this the weekly plan?
@@ -267,16 +273,9 @@ async function handleNewChannelMessage(event, env) {
 
   console.log('Classification: service plan detected. Running full analysis.');
 
-  // Step 2: load all configured campuses for this channel
-  const campuses = await env.STATE.get(`campuses:${event.channel}`, { type: 'json' });
-  if (!campuses || campuses.length === 0) {
-    console.log('No campuses configured for this channel.');
-    return;
-  }
-
   const sunday = nextSundayDate();
 
-  // Step 3: process each campus in parallel
+  // Step 2: process each campus in parallel
   await Promise.all(campuses.map((campus) => processCampusPlan(text, event, campus, sunday, env)));
 }
 
