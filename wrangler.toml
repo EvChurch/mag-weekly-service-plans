@@ -8,4 +8,4 @@ crons = ["0 3 * * 6"]   # Saturday 03:00 UTC = 4:00 PM NZDT (safety net)
 
 [[kv_namespaces]]
 binding = "STATE"
-id = "your-kv-namespace-id"
+id = "c8ce227c8d6f40f8ba80256c8a2defab"
