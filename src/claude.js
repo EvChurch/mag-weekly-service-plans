@@ -27,7 +27,7 @@ export async function classifyMessage(messageText, apiKey) {
     messages: [
       {
         role: 'user',
-        content: `Does this Slack message appear to be a weekly church service plan update that describes what is happening in an upcoming Sunday service, including service elements, notices, or instructions for the magnification team? Reply with just "yes" or "no".
+        content: `Does this Slack message appear to be a weekly church service plan update that describes what is happening in an upcoming Sunday service, including service elements, notices, or instructions for the team? Reply with just "yes" or "no".
 
 Message:
 ${messageText}`,
@@ -116,7 +116,7 @@ export async function refinePlan(feedbackText, storedState, pcoPlan, apiKey) {
 // ─────────────────────────────────────────────
 
 function buildAnalysisSystemPrompt() {
-  return `You are an assistant that helps manage a church service plan for North Campus.
+  return `You are an assistant that helps manage a church service plan.
 You receive a Slack message describing the upcoming Sunday service plan, plus the current state
 of that plan in Planning Center Online (PCO).
 

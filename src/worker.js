@@ -118,7 +118,7 @@ async function handleNewChannelMessage(event, env) {
 
   // Step 2: fetch PCO plan
   const sunday = nextSundayDate();
-  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, env.NORTH_CAMPUS_SERVICE_TYPE_ID);
+  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, env.SERVICE_TYPE_ID, env.SERVICE_TYPE_NAME);
 
   // Step 3: full analysis via Claude
   const analysis = await analyzePlan(text, pcoPlan, env.ANTHROPIC_API_KEY);
@@ -179,7 +179,7 @@ async function handleThreadReply(event, env) {
     return;
   }
 
-  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, env.NORTH_CAMPUS_SERVICE_TYPE_ID);
+  const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, env.SERVICE_TYPE_ID, env.SERVICE_TYPE_NAME);
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
   // Update the bot's message with revised plan

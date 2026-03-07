@@ -20,9 +20,9 @@ const PCO_BASE = 'https://api.planningcenteronline.com/services/v2';
  *   roster_issues: [ "Worship Leader: no one scheduled", ... ]
  * }
  */
-export async function fetchNextSundayPlan(appId, secret, serviceTypeId) {
-  // 1. Find North Campus service type
-  serviceTypeId = await findNorthCampusServiceTypeId(appId, secret, serviceTypeId);
+export async function fetchNextSundayPlan(appId, secret, serviceTypeId, serviceTypeName) {
+  // 1. Resolve service type
+  serviceTypeId = await resolveServiceTypeId(appId, secret, serviceTypeId, serviceTypeName);
 
   // 2. Get the next upcoming plan
   const plan = await getNextPlan(serviceTypeId, appId, secret);
@@ -141,23 +141,28 @@ function describeChange(change) {
 // SERVICE TYPE LOOKUP
 // ─────────────────────────────────────────────
 
-async function findNorthCampusServiceTypeId(appId, secret, serviceTypeId) {
-  // Prefer an explicitly configured ID (set via NORTH_CAMPUS_SERVICE_TYPE_ID secret)
+async function resolveServiceTypeId(appId, secret, serviceTypeId, serviceTypeName) {
+  // Prefer an explicitly configured ID (set via SERVICE_TYPE_ID secret)
   if (serviceTypeId) return serviceTypeId;
 
-  // Fallback: search by name. Looks for a service type named "North" (case-insensitive).
-  // In PCO this lives inside the NS Mag folder but the API returns all service types flat.
-  const data = await getAllPages(`${PCO_BASE}/service_types?per_page=100`, appId, secret);
-  const nc = data.find((st) =>
-    st.attributes.name?.toLowerCase() === 'north',
-  );
-  if (!nc) {
+  // Fallback: search by name (set via SERVICE_TYPE_NAME secret)
+  if (!serviceTypeName) {
     throw new Error(
-      'Could not find the North Campus service type in PCO. ' +
-      'Set the NORTH_CAMPUS_SERVICE_TYPE_ID secret to avoid name-based lookup.',
+      'No PCO service type configured. Set SERVICE_TYPE_ID (preferred) or SERVICE_TYPE_NAME.',
     );
   }
-  return nc.id;
+
+  const data = await getAllPages(`${PCO_BASE}/service_types?per_page=100`, appId, secret);
+  const match = data.find((st) =>
+    st.attributes.name?.toLowerCase() === serviceTypeName.toLowerCase(),
+  );
+  if (!match) {
+    throw new Error(
+      `Could not find a PCO service type named "${serviceTypeName}". ` +
+      'Check SERVICE_TYPE_NAME or set SERVICE_TYPE_ID instead.',
+    );
+  }
+  return match.id;
 }
 
 // ─────────────────────────────────────────────
@@ -210,39 +215,13 @@ async function getPlanTeams(planId, serviceTypeId, appId, secret) {
 
 function buildRosterIssues(teams) {
   const issues = [];
-  const watchedRoles = [
-    'Worship Leader',
-    'Sound Tech',
-    'Slides Operator',
-    'Magnification',
-    'Kids Ministry',
-    'Bible Reader',
-    'Preacher',
-    'Pray-er',
-  ];
 
   for (const team of teams) {
     for (const member of team.members) {
-      if (!watchedRoles.includes(member.role)) continue;
       if (member.status === 'unconfirmed') {
-        issues.push(`${member.role}: ${member.name} has not yet responded to the serving request`);
+        issues.push(`${member.role} (${team.name}): ${member.name} has not yet responded`);
       } else if (member.status === 'declined') {
-        issues.push(`${member.role}: ${member.name} has declined`);
-      }
-    }
-
-    // Check for completely unfilled watched roles
-    for (const role of watchedRoles) {
-      const hasAny = team.members.some((m) => m.role === role);
-      if (!hasAny) {
-        // Only flag if the team name suggests it's relevant
-        if (
-          role === 'Worship Leader' ||
-          role === 'Sound Tech' ||
-          role === 'Preacher'
-        ) {
-          issues.push(`${role}: no one scheduled`);
-        }
+        issues.push(`${member.role} (${team.name}): ${member.name} has declined`);
       }
     }
   }

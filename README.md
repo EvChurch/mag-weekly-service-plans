@@ -81,16 +81,13 @@ package.json
 
 ### 3. PCO Service Type ID
 
-The Worker needs the ID of the "North" service type inside the NS Mag folder in PCO.
-The easiest way to find it:
+The Worker needs to know which PCO service type to watch. Set one of:
 
-1. Log in to Planning Center and open Services
-2. Navigate to the North service type
-3. Look at the URL — it will contain the ID, e.g.:
-   `https://services.planningcenteronline.com/service_types/12345678`
-4. Copy that number — this is your `NORTH_CAMPUS_SERVICE_TYPE_ID`
+- **`SERVICE_TYPE_ID`** (preferred) — the numeric ID from the PCO URL, e.g.:
+  `https://services.planningcenteronline.com/service_types/12345678` → `12345678`
+- **`SERVICE_TYPE_NAME`** (fallback) — the exact name of the service type as it appears in PCO
 
-If this secret is not set, the Worker will fall back to searching for a service type named "North".
+To find the ID: log in to Planning Center → Services → open your service type → copy the number from the URL.
 
 ---
 
@@ -120,7 +117,7 @@ wrangler secret put PCO_APP_ID
 wrangler secret put PCO_SECRET
 wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put APPROVAL_SLACK_USER_ID
-wrangler secret put NORTH_CAMPUS_SERVICE_TYPE_ID
+wrangler secret put SERVICE_TYPE_ID       # or SERVICE_TYPE_NAME if you prefer name-based lookup
 
 # Deploy
 wrangler deploy

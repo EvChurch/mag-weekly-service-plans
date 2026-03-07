@@ -194,6 +194,9 @@ PCO volunteer statuses:
 - `unconfirmed` — request sent, no response yet
 - `declined` — has declined
 
+All roles on the plan are checked for roster issues — there is no hardcoded list of watched
+roles. Any team member with an unconfirmed or declined status is flagged.
+
 ---
 
 ## Slack App Requirements
@@ -221,4 +224,5 @@ Approval is gated on `APPROVAL_SLACK_USER_ID` — only reactions from that user 
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
 | `APPROVAL_SLACK_USER_ID` | Your Slack user ID — only your checkmark triggers PCO writes |
-| `NORTH_CAMPUS_SERVICE_TYPE_ID` | PCO service type ID for the North service inside the NS Mag folder. If not set, falls back to name-matching on "North". |
+| `SERVICE_TYPE_ID` | PCO service type ID (preferred). Found in the URL when viewing the service type in PCO. |
+| `SERVICE_TYPE_NAME` | PCO service type name (fallback if SERVICE_TYPE_ID is not set). Must match exactly. |
