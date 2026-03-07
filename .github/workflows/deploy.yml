@@ -25,7 +25,6 @@ jobs:
           secrets: |
             SLACK_BOT_TOKEN
             SLACK_SIGNING_SECRET
-            SLACK_CHANNEL_ID
             SLACK_BOT_USER_ID
             PCO_APP_ID
             PCO_SECRET
@@ -33,7 +32,6 @@ jobs:
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_SIGNING_SECRET: ${{ secrets.SLACK_SIGNING_SECRET }}
-          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
           SLACK_BOT_USER_ID: ${{ secrets.SLACK_BOT_USER_ID }}
           PCO_APP_ID: ${{ secrets.PCO_APP_ID }}
           PCO_SECRET: ${{ secrets.PCO_SECRET }}

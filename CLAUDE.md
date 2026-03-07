@@ -259,7 +259,6 @@ is the only user whose checkmark reaction triggers PCO writes for that campus.
 |--------|-------------|
 | `SLACK_BOT_TOKEN` | Bot User OAuth Token (xoxb-...) |
 | `SLACK_SIGNING_SECRET` | Used to verify webhook requests came from Slack |
-| `SLACK_CHANNEL_ID` | ID of the #weekly-service-plans private channel |
 | `SLACK_BOT_USER_ID` | The bot's Slack user ID — used to detect when the bot joins a channel |
 | `PCO_APP_ID` | Planning Center Personal Access Token App ID |
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |

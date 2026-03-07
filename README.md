@@ -128,7 +128,6 @@ Worker secrets are set in the Cloudflare dashboard — not via wrangler CLI.
 |--------|-------|
 | `SLACK_BOT_TOKEN` | Bot User OAuth Token (`xoxb-...`) |
 | `SLACK_SIGNING_SECRET` | From Slack app → Basic Information → App Credentials |
-| `SLACK_CHANNEL_ID` | ID of the private channel the bot is in |
 | `SLACK_BOT_USER_ID` | Bot's Slack user ID |
 | `PCO_APP_ID` | Planning Center Personal Access Token App ID |
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |

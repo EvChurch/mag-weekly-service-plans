@@ -89,31 +89,38 @@ export default {
   // ─────────────────────────────────────────────
   async scheduled(controller, env) {
     const sunday = nextSundayDate();
-    const campuses = await env.STATE.get(`campuses:${env.SLACK_CHANNEL_ID}`, { type: 'json' });
 
-    if (!campuses || campuses.length === 0) {
+    // Find all channels that have campuses configured
+    const { keys } = await env.STATE.list({ prefix: 'campuses:' });
+
+    if (keys.length === 0) {
       console.log('Safety-net cron: no campuses configured.');
       return;
     }
 
-    const states = await Promise.all(
-      campuses.map((c) => env.STATE.get(weekKey(sunday, c.campus_name), { type: 'json' })),
-    );
+    for (const { name } of keys) {
+      const channelId = name.slice('campuses:'.length);
+      const campuses = await env.STATE.get(name, { type: 'json' });
+      if (!campuses || campuses.length === 0) continue;
 
-    const anyMissing = states.some((s) => !s?.plan_received);
+      const states = await Promise.all(
+        campuses.map((c) => env.STATE.get(weekKey(sunday, c.campus_name), { type: 'json' })),
+      );
 
-    if (!anyMissing) {
-      console.log(`Safety-net cron: all campuses have received plans for ${sunday}.`);
-      return;
+      const anyMissing = states.some((s) => !s?.plan_received);
+      if (!anyMissing) {
+        console.log(`Safety-net cron: all campuses have received plans for ${channelId}.`);
+        continue;
+      }
+
+      await postMessage(
+        channelId,
+        `Hey, just checking — has the service plan for this Sunday been posted yet? I haven't seen it come through.`,
+        env.SLACK_BOT_TOKEN,
+      );
+
+      console.log(`Safety-net cron: nudge posted for ${channelId}.`);
     }
-
-    await postMessage(
-      env.SLACK_CHANNEL_ID,
-      `Hey, just checking — has the service plan for this Sunday been posted yet? I haven't seen it come through.`,
-      env.SLACK_BOT_TOKEN,
-    );
-
-    console.log(`Safety-net cron: nudge posted for ${sunday}.`);
   },
 };
 
@@ -121,10 +128,6 @@ export default {
 // EVENT DISPATCHER
 // ─────────────────────────────────────────────
 async function handleEvent(event, env) {
-  // reaction_added has the channel in event.item.channel, not event.channel
-  const channel = event.channel ?? event.item?.channel;
-  if (channel !== env.SLACK_CHANNEL_ID) return;
-
   // ── Bot invited to channel ──
   if (event.type === 'member_joined_channel') {
     await handleMemberJoined(event, env);
