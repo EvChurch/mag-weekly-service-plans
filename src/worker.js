@@ -198,7 +198,7 @@ async function handleSlashCommand(params, env) {
         element: {
           type: 'plain_text_input',
           action_id: 'value',
-          placeholder: { type: 'plain_text', text: 'e.g. North Campus' },
+          placeholder: { type: 'plain_text', text: 'e.g. North' },
         },
       },
       {
