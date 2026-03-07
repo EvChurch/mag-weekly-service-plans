@@ -137,7 +137,7 @@ async function handleEvent(event, env) {
   if (!campuses || campuses.length === 0) return;
 
   // ── New top-level message ──
-  if (event.type === 'message' && event.subtype == null && !event.thread_ts) {
+  if (event.type === 'message' && event.subtype == null && !event.thread_ts && !event.bot_id) {
     await handleNewChannelMessage(event, env, campuses);
     return;
   }
