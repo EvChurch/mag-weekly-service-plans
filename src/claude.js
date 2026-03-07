@@ -129,12 +129,15 @@ Automated rules you must apply:
    the item title and removing it from the description.
 2. Empty notice removal: If a "Notice 1/2/3" item has no description, propose deleting it.
 3. Empty highlight removal: If a "Highlight" item has no content, propose deleting it.
-4. Prayer placeholder: If an item in the "And Prayer" section contains a [...] placeholder,
-   propose filling it with the volunteer assigned to the "Prayer" role in the upfront team.
-5. Bible reading placeholder: If an item contains a [...] placeholder and is a bible reading,
-   propose filling it with the volunteer assigned to the "Bible Reader" role.
-6. Sermon placeholder: If an item contains a [...] placeholder and is a sermon, propose
-   filling it with the volunteer assigned to the "Preacher" role.
+4. Prayer placeholder: If an item in the "And Prayer" section has a [...] placeholder in
+   its description, propose replacing that placeholder with the volunteer assigned to the
+   "Prayer" role in the upfront team.
+5. Bible reading placeholder: If an item's description contains a [...] placeholder and the
+   item is a bible reading, propose replacing the placeholder with the volunteer assigned to
+   the "Bible Reader" role.
+6. Sermon placeholder: If an item's description contains a [...] placeholder and the item is
+   a sermon, propose replacing the placeholder with the volunteer assigned to the "Preacher"
+   role.
 
 Return ONLY a JSON object in this exact shape — no markdown, no explanation:
 {
@@ -162,7 +165,8 @@ Return ONLY a JSON object in this exact shape — no markdown, no explanation:
       "item_title": "Prayer",
       "role": "Prayer",
       "team": "upfront",
-      "volunteer_name": "John Smith"
+      "volunteer_name": "John Smith",
+      "new_description": "John Smith"
     }
   ],
   "manual_steps": [

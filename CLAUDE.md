@@ -140,9 +140,9 @@ These are applied without Claude — they are reliable enough to automate direct
 | Notice title fix | Item titled "Notice 1/2/3", first line of description is real title | Move first line → item title; remove from description |
 | Empty notice removal | "Notice 1/2/3" with no description | Delete item from plan |
 | Highlight spot removal | Highlight item with no content | Delete item from plan |
-| Prayer placeholder | Item in "And Prayer" section has [...] placeholder | Lookup "Prayer" role (upfront team) → replace with volunteer name |
-| Bible reading placeholder | Item has [...] placeholder, is bible reading | Lookup "Bible Reader" role (upfront team) → replace |
-| Sermon placeholder | Item has [...] placeholder, is sermon | Lookup "Preacher" role (preaching team) → replace |
+| Prayer placeholder | Item in "And Prayer" section has [...] placeholder in its **description** | Lookup "Prayer" role (upfront team) → replace placeholder in description with volunteer name |
+| Bible reading placeholder | Item **description** contains [...] placeholder, item is bible reading | Lookup "Bible Reader" role (upfront team) → replace placeholder in description |
+| Sermon placeholder | Item **description** contains [...] placeholder, item is sermon | Lookup "Preacher" role (preaching team) → replace placeholder in description |
 
 ---
 

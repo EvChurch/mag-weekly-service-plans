@@ -109,7 +109,7 @@ async function applyChange(planId, change, appId, secret) {
         {
           data: {
             type: 'Item',
-            attributes: { title: change.new_title ?? change.volunteer_name },
+            attributes: { description: change.new_description },
           },
         },
         appId,
