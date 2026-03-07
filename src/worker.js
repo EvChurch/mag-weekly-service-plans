@@ -71,6 +71,18 @@ export default {
 
     const event = payload.event;
 
+    // Temporary: log event fields to diagnose bot message filtering
+    if (event.type === 'message') {
+      console.log('Message event:', JSON.stringify({
+        type: event.type,
+        subtype: event.subtype,
+        bot_id: event.bot_id,
+        app_id: event.app_id,
+        user: event.user,
+        thread_ts: event.thread_ts,
+      }));
+    }
+
     // Use ctx.waitUntil so the Worker stays alive until async work completes
     // even after the HTTP response is returned to Slack (3-second window).
     ctx.waitUntil(
