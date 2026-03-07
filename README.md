@@ -97,7 +97,7 @@ package.json
 ### 3. Cloudflare — KV Namespace
 
 1. Go to the [Cloudflare dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **KV**
-2. Click **Create a namespace**, name it `STATE` → **Add**
+2. Click **Create a namespace** (the name doesn't matter) → **Add**
 3. Copy the namespace ID and paste it into `wrangler.toml`, replacing `your-kv-namespace-id`
 4. Commit and push — the GitHub Actions deploy will pick it up
 
