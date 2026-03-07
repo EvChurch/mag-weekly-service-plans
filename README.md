@@ -116,6 +116,7 @@ wrangler secret put PCO_APP_ID
 wrangler secret put PCO_SECRET
 wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put APPROVAL_SLACK_USER_ID
+wrangler secret put CAMPUS_NAME            # e.g. "North Campus" — shown in thread replies
 wrangler secret put SERVICE_TYPE_ID
 
 # Deploy

@@ -224,4 +224,5 @@ Approval is gated on `APPROVAL_SLACK_USER_ID` — only reactions from that user 
 | `PCO_SECRET` | Planning Center Personal Access Token Secret |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude |
 | `APPROVAL_SLACK_USER_ID` | Your Slack user ID — only your checkmark triggers PCO writes |
+| `CAMPUS_NAME` | Display name shown in thread replies (e.g. "North Campus"). Useful when multiple workers share a channel. |
 | `SERVICE_TYPE_ID` | PCO service type ID. Found in the URL when viewing the service type in PCO. |

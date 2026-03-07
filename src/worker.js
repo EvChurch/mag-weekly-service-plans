@@ -65,9 +65,10 @@ export default {
       return;
     }
 
+    const campus = env.CAMPUS_NAME ? `${env.CAMPUS_NAME}: ` : '';
     await postMessage(
       env.SLACK_CHANNEL_ID,
-      "Hey, just checking — has the service plan for this Sunday been posted yet? I haven't seen it come through.",
+      `${campus}Hey, just checking — has the service plan for this Sunday been posted yet? I haven't seen it come through.`,
       env.SLACK_BOT_TOKEN,
     );
 
@@ -124,7 +125,7 @@ async function handleNewChannelMessage(event, env) {
   const analysis = await analyzePlan(text, pcoPlan, env.ANTHROPIC_API_KEY);
 
   // Step 4: build the reply text
-  const replyText = formatAnalysisReply(analysis, pcoPlan, sunday);
+  const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, env.CAMPUS_NAME);
 
   // Step 5: post reply in thread
   const botReply = await postReply(
@@ -183,7 +184,7 @@ async function handleThreadReply(event, env) {
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
   // Update the bot's message with revised plan
-  const updatedText = formatAnalysisReply(refined, pcoPlan, sunday) +
+  const updatedText = formatAnalysisReply(refined, pcoPlan, sunday, env.CAMPUS_NAME) +
     '\n\n_Plan updated based on your feedback._';
 
   await editMessage(
@@ -250,10 +251,11 @@ async function handleReaction(event, env) {
 // ─────────────────────────────────────────────
 // FORMAT SLACK REPLY
 // ─────────────────────────────────────────────
-function formatAnalysisReply(analysis, pcoPlan, sunday) {
+function formatAnalysisReply(analysis, pcoPlan, sunday, campusName) {
   const { proposed_changes = [], manual_steps = [], roster_issues = [] } = analysis;
 
-  const lines = [`*Service Plan Analysis — Sunday ${sunday}*\n`];
+  const campusPrefix = campusName ? `${campusName}: ` : '';
+  const lines = [`*${campusPrefix}Service Plan Analysis — Sunday ${sunday}*\n`];
 
   lines.push('*Proposed Changes* (react :white_check_mark: to apply to Planning Center):');
   if (proposed_changes.length === 0) {
