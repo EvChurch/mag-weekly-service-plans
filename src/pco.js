@@ -20,9 +20,7 @@ const PCO_BASE = 'https://api.planningcenteronline.com/services/v2';
  *   roster_issues: [ "Worship Leader: no one scheduled", ... ]
  * }
  */
-export async function fetchNextSundayPlan(appId, secret, serviceTypeId, serviceTypeName) {
-  // 1. Resolve service type
-  serviceTypeId = await resolveServiceTypeId(appId, secret, serviceTypeId, serviceTypeName);
+export async function fetchNextSundayPlan(appId, secret, serviceTypeId) {
 
   // 2. Get the next upcoming plan
   const plan = await getNextPlan(serviceTypeId, appId, secret);
@@ -141,29 +139,6 @@ function describeChange(change) {
 // SERVICE TYPE LOOKUP
 // ─────────────────────────────────────────────
 
-async function resolveServiceTypeId(appId, secret, serviceTypeId, serviceTypeName) {
-  // Prefer an explicitly configured ID (set via SERVICE_TYPE_ID secret)
-  if (serviceTypeId) return serviceTypeId;
-
-  // Fallback: search by name (set via SERVICE_TYPE_NAME secret)
-  if (!serviceTypeName) {
-    throw new Error(
-      'No PCO service type configured. Set SERVICE_TYPE_ID (preferred) or SERVICE_TYPE_NAME.',
-    );
-  }
-
-  const data = await getAllPages(`${PCO_BASE}/service_types?per_page=100`, appId, secret);
-  const match = data.find((st) =>
-    st.attributes.name?.toLowerCase() === serviceTypeName.toLowerCase(),
-  );
-  if (!match) {
-    throw new Error(
-      `Could not find a PCO service type named "${serviceTypeName}". ` +
-      'Check SERVICE_TYPE_NAME or set SERVICE_TYPE_ID instead.',
-    );
-  }
-  return match.id;
-}
 
 // ─────────────────────────────────────────────
 // PLAN LOOKUP

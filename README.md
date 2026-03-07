@@ -81,13 +81,12 @@ package.json
 
 ### 3. PCO Service Type ID
 
-The Worker needs to know which PCO service type to watch. Set one of:
+The Worker needs to know which PCO service type to watch.
 
-- **`SERVICE_TYPE_ID`** (preferred) — the numeric ID from the PCO URL, e.g.:
-  `https://services.planningcenteronline.com/service_types/12345678` → `12345678`
-- **`SERVICE_TYPE_NAME`** (fallback) — the exact name of the service type as it appears in PCO
+To find the ID: log in to Planning Center → Services → open your service type → copy the number from the URL, e.g.:
+`https://services.planningcenteronline.com/service_types/12345678` → `12345678`
 
-To find the ID: log in to Planning Center → Services → open your service type → copy the number from the URL.
+This is your `SERVICE_TYPE_ID`.
 
 ---
 
@@ -117,7 +116,7 @@ wrangler secret put PCO_APP_ID
 wrangler secret put PCO_SECRET
 wrangler secret put ANTHROPIC_API_KEY
 wrangler secret put APPROVAL_SLACK_USER_ID
-wrangler secret put SERVICE_TYPE_ID       # or SERVICE_TYPE_NAME if you prefer name-based lookup
+wrangler secret put SERVICE_TYPE_ID
 
 # Deploy
 wrangler deploy
