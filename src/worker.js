@@ -127,10 +127,9 @@ async function handleNewChannelMessage(event, env) {
   // Step 4: build the reply text
   const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, env.CAMPUS_NAME);
 
-  // Step 5: post reply in thread
-  const botReply = await postReply(
+  // Step 5: post as a new top-level message — this becomes the thread root for refinement
+  const botReply = await postMessage(
     env.SLACK_CHANNEL_ID,
-    event.ts,
     replyText,
     env.SLACK_BOT_TOKEN,
   );
@@ -165,10 +164,8 @@ async function handleThreadReply(event, env) {
 
   if (!stored) return;
 
-  // Only respond to replies in our bot's thread
-  if (event.thread_ts !== stored.bot_reply_ts && event.thread_ts !== stored.slack_message_ts) {
-    return;
-  }
+  // Only respond to replies in the bot's thread
+  if (event.thread_ts !== stored.bot_reply_ts) return;
 
   if (stored.applied) {
     await postReply(
@@ -239,7 +236,7 @@ async function handleReaction(event, env) {
 
   await postReply(
     env.SLACK_CHANNEL_ID,
-    stored.slack_message_ts,
+    stored.bot_reply_ts,
     `Changes applied to Planning Center:\n${summary}`,
     env.SLACK_BOT_TOKEN,
   );
