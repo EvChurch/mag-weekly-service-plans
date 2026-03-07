@@ -235,7 +235,7 @@ roles. Any team member with an unconfirmed or declined status is flagged.
 
 ## Slack App Requirements
 
-OAuth Scopes: `groups:history`, `chat:write`, `reactions:read`
+OAuth Scopes: `channels:history`, `channels:read`, `groups:history`, `groups:read`, `chat:write`, `reactions:read`
 
 Bot Events subscribed:
 - `message.groups` — new messages in private channels

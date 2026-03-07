@@ -55,8 +55,11 @@ package.json
 **Add OAuth scopes**
 
 3. Left sidebar → **OAuth & Permissions** → **Bot Token Scopes** → **Add an OAuth Scope**
-4. Add these three:
+4. Add these six:
+   - `channels:history` — read messages in public channels
+   - `channels:read` — check if bot is in a public channel
    - `groups:history` — read messages in private channels
+   - `groups:read` — check if bot is in a private channel
    - `chat:write` — post and edit messages
    - `reactions:read` — see reactions
 
