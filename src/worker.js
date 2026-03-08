@@ -311,7 +311,7 @@ async function handleNewChannelMessage(event, env, campuses) {
 
 async function processCampusPlan(text, event, campus, sunday, env) {
   const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, campus.service_type_id);
-  const analysis = await analyzePlan(text, pcoPlan, env.ANTHROPIC_API_KEY);
+  const analysis = await analyzePlan(text, pcoPlan, campus.campus_name, env.ANTHROPIC_API_KEY);
   const replyText = formatAnalysisReply(analysis, pcoPlan, sunday, campus.campus_name);
 
   const botReply = await postMessage(event.channel, replyText, env.SLACK_BOT_TOKEN);
