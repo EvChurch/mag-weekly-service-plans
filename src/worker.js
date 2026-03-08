@@ -360,11 +360,15 @@ async function handleThreadReply(event, env) {
   const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, stored.service_type_id);
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
-  const updatedText =
-    formatAnalysisReply(refined, pcoPlan, sunday, stored.campus_name) +
-    '\n\n_Plan updated based on your feedback._';
+  await editMessage(
+    event.channel,
+    stored.bot_reply_ts,
+    formatAnalysisReply(refined, pcoPlan, sunday, stored.campus_name),
+    env.SLACK_BOT_TOKEN,
+  );
 
-  await editMessage(event.channel, stored.bot_reply_ts, updatedText, env.SLACK_BOT_TOKEN);
+  const replyText = refined.summary ?? 'Plan updated based on your feedback.';
+  await postReply(event.channel, stored.bot_reply_ts, replyText, env.SLACK_BOT_TOKEN);
 
   await env.STATE.put(key, JSON.stringify({
     ...stored,
