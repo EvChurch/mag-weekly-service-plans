@@ -109,6 +109,7 @@ export async function refinePlan(feedbackText, storedState, pcoPlan, apiKey) {
     manual_steps: parsed.manual_steps ?? storedState.manual_steps,
     roster_issues: pcoPlan.roster_issues ?? [],
     summary: parsed.summary ?? null,
+    questions: parsed.questions?.length ? parsed.questions : null,
   };
 }
 
@@ -248,12 +249,16 @@ function buildRefinementSystemPrompt() {
   return `You are an assistant helping refine a church service plan change proposal.
 You have the current list of proposed changes and the user's feedback.
 Update the proposed_changes and manual_steps based on the feedback.
+If the feedback is ambiguous or you need clarification before making a change, do not guess —
+instead leave the plan unchanged and return your questions in the "questions" field.
 Return ONLY a JSON object — no markdown, no explanation:
 {
   "proposed_changes": [...],
   "manual_steps": [...],
-  "summary": "One or two sentences describing exactly what you changed, e.g. 'Moved the baptism note onto the Communion item. Removed the manual step for Question Time.'"
-}`;
+  "summary": "One or two sentences describing exactly what you changed. Omit if returning questions instead.",
+  "questions": ["Question 1?", "Question 2?"]
+}
+Omit "questions" entirely if you have no questions. Omit "summary" if you have questions.`;
 }
 
 function buildRefinementUserPrompt(feedbackText, storedState, pcoPlan) {

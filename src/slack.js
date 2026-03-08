@@ -102,6 +102,14 @@ export async function postEphemeral(channelId, userId, text, botToken) {
 }
 
 /**
+ * Add a reaction emoji to a message.
+ * emoji is the name without colons, e.g. "eyes", "white_check_mark", "question"
+ */
+export async function addReaction(channelId, messageTs, emoji, botToken) {
+  return slackCall('reactions.add', botToken, { channel: channelId, timestamp: messageTs, name: emoji });
+}
+
+/**
  * Returns true if the bot is a member of the given channel.
  */
 export async function isBotInChannel(channelId, botToken) {

@@ -62,6 +62,7 @@ package.json
    - `groups:read` — check if bot is in a private channel
    - `chat:write` — post and edit messages
    - `reactions:read` — see reactions
+   - `reactions:write` — add reactions to messages
 
 **Install to workspace**
 

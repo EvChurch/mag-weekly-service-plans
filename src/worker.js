@@ -11,7 +11,7 @@
  *  - Modal submission:  application/x-www-form-urlencoded with `payload` JSON
  */
 
-import { verifySlackSignature, postMessage, editMessage, postReply, openModal, postEphemeral, isBotInChannel } from './slack.js';
+import { verifySlackSignature, postMessage, editMessage, postReply, openModal, postEphemeral, isBotInChannel, addReaction } from './slack.js';
 import { fetchNextSundayPlan, applyChangesToPco } from './pco.js';
 import { classifyMessage, analyzePlan, refinePlan } from './claude.js';
 import { nextSundayDate, weekKey } from './utils.js';
@@ -345,9 +345,10 @@ async function handleThreadReply(event, env) {
   const sunday = nextSundayDate();
   const { stored, key } = await findCampusStateByTs(event.channel, event.thread_ts, sunday, env);
 
-  console.log('Thread reply: thread_ts=%s stored=%s', event.thread_ts, stored ? 'found' : 'not found');
-
   if (!stored) return;
+
+  // Signal that we're looking into it
+  await addReaction(event.channel, event.ts, 'eyes', env.SLACK_BOT_TOKEN);
 
   if (stored.applied) {
     await postReply(
@@ -362,7 +363,13 @@ async function handleThreadReply(event, env) {
   const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, stored.service_type_id);
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
-  console.log('Thread reply: refined summary=%s', refined.summary);
+  // If Claude needs clarification, ask rather than guess
+  if (refined.questions) {
+    const questionText = refined.questions.join('\n');
+    await addReaction(event.channel, event.ts, 'question', env.SLACK_BOT_TOKEN);
+    await postReply(event.channel, stored.bot_reply_ts, questionText, env.SLACK_BOT_TOKEN);
+    return;
+  }
 
   await editMessage(
     event.channel,
@@ -371,9 +378,8 @@ async function handleThreadReply(event, env) {
     env.SLACK_BOT_TOKEN,
   );
 
-  console.log('Thread reply: message edited, posting reply');
-
-  const replyText = refined.summary ?? 'Plan updated based on your feedback.';
+  await addReaction(event.channel, event.ts, 'white_check_mark', env.SLACK_BOT_TOKEN);
+  const replyText = refined.summary ?? 'Plan updated.';
   await postReply(event.channel, stored.bot_reply_ts, replyText, env.SLACK_BOT_TOKEN);
 
   await env.STATE.put(key, JSON.stringify({
