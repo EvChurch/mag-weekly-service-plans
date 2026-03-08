@@ -345,6 +345,8 @@ async function handleThreadReply(event, env) {
   const sunday = nextSundayDate();
   const { stored, key } = await findCampusStateByTs(event.channel, event.thread_ts, sunday, env);
 
+  console.log('Thread reply: thread_ts=%s stored=%s', event.thread_ts, stored ? 'found' : 'not found');
+
   if (!stored) return;
 
   if (stored.applied) {
@@ -360,12 +362,16 @@ async function handleThreadReply(event, env) {
   const pcoPlan = await fetchNextSundayPlan(env.PCO_APP_ID, env.PCO_SECRET, stored.service_type_id);
   const refined = await refinePlan(event.text, stored, pcoPlan, env.ANTHROPIC_API_KEY);
 
+  console.log('Thread reply: refined summary=%s', refined.summary);
+
   await editMessage(
     event.channel,
     stored.bot_reply_ts,
     formatAnalysisReply(refined, pcoPlan, sunday, stored.campus_name),
     env.SLACK_BOT_TOKEN,
   );
+
+  console.log('Thread reply: message edited, posting reply');
 
   const replyText = refined.summary ?? 'Plan updated based on your feedback.';
   await postReply(event.channel, stored.bot_reply_ts, replyText, env.SLACK_BOT_TOKEN);
