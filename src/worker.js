@@ -71,25 +71,26 @@ export default {
 
     const event = payload.event;
 
-    // Temporary: log event fields to diagnose bot message filtering
-    if (event.type === 'message') {
-      console.log('Message event:', JSON.stringify({
-        type: event.type,
-        subtype: event.subtype,
-        bot_id: event.bot_id,
-        app_id: event.app_id,
-        user: event.user,
-        thread_ts: event.thread_ts,
-      }));
-    }
-
-    // Use ctx.waitUntil so the Worker stays alive until async work completes
-    // even after the HTTP response is returned to Slack (3-second window).
-    ctx.waitUntil(
-      handleEvent(event, env).catch((err) => console.error('Event handler error:', err)),
-    );
+    // Enqueue the event for async processing — this lets us return 200 to Slack
+    // immediately without being constrained by the waitUntil() 30-second limit.
+    await env.EVENT_QUEUE.send(event);
 
     return new Response('OK');
+  },
+
+  // ─────────────────────────────────────────────
+  // QUEUE HANDLER – async event processing
+  // ─────────────────────────────────────────────
+  async queue(batch, env) {
+    for (const msg of batch.messages) {
+      try {
+        await handleEvent(msg.body, env);
+      } catch (err) {
+        console.error('Queue handler error:', err);
+      }
+      // Always ack to avoid reprocessing (partial success could cause duplicates)
+      msg.ack();
+    }
   },
 
   // ─────────────────────────────────────────────
