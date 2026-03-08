@@ -104,7 +104,8 @@ async function applyChange(planId, change, appId, secret) {
       break;
     }
 
-    case 'fill_placeholder': {
+    case 'fill_placeholder':
+    case 'preservice_encouragement': {
       await pcoRequest(
         'PATCH',
         `/service_types/0/plans/${planId}/items/${change.item_id}`,
@@ -131,6 +132,7 @@ function describeChange(change) {
     case 'remove_empty_notice':  return `Deleted empty notice item ${change.item_id}`;
     case 'remove_empty_highlight': return `Deleted empty highlight item ${change.item_id}`;
     case 'fill_placeholder':  return `Filled placeholder in item ${change.item_id} → "${change.volunteer_name}"`;
+    case 'preservice_encouragement': return `Added pre-service encouragement (${change.passage}) to ${change.item_title}`;
     default:                  return JSON.stringify(change);
   }
 }

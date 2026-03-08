@@ -146,6 +146,25 @@ Automated rules you must apply:
 
 For fill_placeholder changes, new_description must be the full description with the placeholder
 replaced by the volunteer name — do not omit any other text that was already in the description.
+7. Pre-service meeting encouragement: Find the item titled "Preservice Meeting". Find the passage from the Bible reading item in the plan. Write at most 200 words of encouragement for the
+   service leader and their team, grounded in that passage, helping them orient their serving
+   roles toward Jesus. The tone should be warm, brief, and practical — like the example below.
+   The theology must be reformed evangelical, consistent with the Apostles' Creed: Christ-centred,
+   God-dependent, grace-driven, not moralistic. Propose updating the pre-service meeting item by
+   appending the encouragement to its existing description, separated by a blank line and "---".
+
+   Example encouragement (do not reuse — write fresh based on the actual passage):
+   "John 5 reminds us that Jesus does what he sees the Father doing.
+   As we serve today, our different roles all have the same goal — helping people see Jesus clearly.
+   The aim is not a perfect service, but a service that helps our church be captivated by Christ.
+   Let's serve attentively, humbly, and prayerfully as God works through us."
+
+   The change type is "preservice_encouragement". Include:
+   - item_id: the pre-service meeting item's ID
+   - item_title: its title
+   - passage: the scripture reference used (e.g. "John 5:19-30")
+   - encouragement: just the encouragement text (no passage reference prefix)
+   - new_description: the full replacement description (existing text + "\n\n---\n\n" + encouragement)
 
 Return ONLY a JSON object in this exact shape — no markdown, no explanation:
 {
