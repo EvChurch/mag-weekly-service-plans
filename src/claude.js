@@ -102,6 +102,18 @@ export async function refinePlan(feedbackText, storedState, pcoPlan, apiKey) {
   });
 
   const raw = response.content[0]?.text ?? '{}';
+
+  // If Claude returned plain prose (no JSON), treat the whole response as a clarifying question
+  if (raw.indexOf('{') === -1) {
+    return {
+      proposed_changes: storedState.proposed_changes,
+      manual_steps: storedState.manual_steps,
+      roster_issues: pcoPlan.roster_issues ?? [],
+      summary: null,
+      questions: [raw.trim()],
+    };
+  }
+
   const parsed = parseJsonResponse(raw);
 
   return {
