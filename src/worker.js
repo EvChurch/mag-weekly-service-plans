@@ -71,26 +71,11 @@ export default {
 
     const event = payload.event;
 
-    // Enqueue the event for async processing — this lets us return 200 to Slack
-    // immediately without being constrained by the waitUntil() 30-second limit.
-    await env.EVENT_QUEUE.send(event);
+    ctx.waitUntil(
+      handleEvent(event, env).catch((err) => console.error('Event handler error:', err)),
+    );
 
     return new Response('OK');
-  },
-
-  // ─────────────────────────────────────────────
-  // QUEUE HANDLER – async event processing
-  // ─────────────────────────────────────────────
-  async queue(batch, env) {
-    for (const msg of batch.messages) {
-      try {
-        await handleEvent(msg.body, env);
-      } catch (err) {
-        console.error('Queue handler error:', err);
-      }
-      // Always ack to avoid reprocessing (partial success could cause duplicates)
-      msg.ack();
-    }
   },
 
   // ─────────────────────────────────────────────

@@ -10,15 +10,6 @@ crons = ["0 3 * * 6"]   # Saturday 03:00 UTC = 4:00 PM NZDT (safety net)
 [observability]
 enabled = true
 
-[[queues.producers]]
-binding = "EVENT_QUEUE"
-queue = "mag-service-plan-events"
-
-[[queues.consumers]]
-queue = "mag-service-plan-events"
-max_batch_size = 1
-max_batch_timeout = 0
-
 [[kv_namespaces]]
 binding = "STATE"
 id = "c8ce227c8d6f40f8ba80256c8a2defab"
