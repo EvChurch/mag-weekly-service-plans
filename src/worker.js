@@ -489,8 +489,6 @@ function formatChange(change) {
       return `[Highlight] Removed (no content)`;
     case 'fill_placeholder':
       return `[${change.item_title ?? change.role}] Placeholder → "${change.volunteer_name}"`;
-    case 'preservice_encouragement':
-      return `[Preservice Meeting] Encouragement added (${change.passage})`;
     default:
       return JSON.stringify(change);
   }
