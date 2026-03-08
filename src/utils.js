@@ -3,14 +3,29 @@
  */
 
 /**
- * Returns the date string (YYYY-MM-DD) of the next Sunday (or today if it's Sunday).
+ * Returns the date string (YYYY-MM-DD) of the next Sunday in NZ time.
+ * Always returns the *upcoming* Sunday — never today, even if today is Sunday,
+ * because service plans posted on Sunday are for the following week's service.
  */
 export function nextSundayDate() {
   const now = new Date();
-  const day = now.getUTCDay(); // 0 = Sunday
-  const daysUntilSunday = day === 0 ? 0 : 7 - day;
-  const sunday = new Date(now);
-  sunday.setUTCDate(now.getUTCDate() + daysUntilSunday);
+
+  // Determine today's date and weekday in NZ time (handles NZDT/NZST automatically)
+  const nzDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Pacific/Auckland',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now); // YYYY-MM-DD
+
+  const nzWeekday = new Intl.DateTimeFormat('en', {
+    timeZone: 'Pacific/Auckland',
+    weekday: 'short',
+  }).format(now); // 'Sun', 'Mon', ...
+
+  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(nzWeekday);
+  const daysUntilSunday = day === 0 ? 7 : 7 - day;
+
+  const [y, m, d] = nzDate.split('-').map(Number);
+  const sunday = new Date(Date.UTC(y, m - 1, d + daysUntilSunday));
   return sunday.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
