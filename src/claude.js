@@ -134,8 +134,8 @@ Automated rules you must apply:
    before Sunday." If only SOME notices are empty (others have descriptions), propose
    deleting only the empty ones.
 3. Empty highlight removal: If a "Highlight" item has no content, propose deleting it.
-4. Pray-er placeholder: If an item titled "Prayer" has a [Pray-er Name] placeholder in its
-   description, propose replacing only the [Pray-er Name] with the volunteer assigned to the
+4. Pray-er placeholder: If an item titled "Prayer" has a [Prayer Name] placeholder in its
+   description, propose replacing only the [Prayer Name] with the volunteer assigned to the
    "Pray-er" role. Leave the rest of the description exactly as-is.
 5. Bible reading placeholder: If an item's description contains a [Bible Reader Name] placeholder,
    propose replacing only the [Bible Reader Name] with the volunteer assigned to the
