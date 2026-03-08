@@ -293,16 +293,16 @@ Update the plan based on the feedback and return the revised JSON.`;
 // ─────────────────────────────────────────────
 
 function parseJsonResponse(text) {
-  // Strip markdown code fences if Claude wraps its response
-  const cleaned = text
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
-    .trim();
-
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1) {
+    console.error('Failed to parse Claude JSON response:', text);
+    return {};
+  }
   try {
-    return JSON.parse(cleaned);
+    return JSON.parse(text.slice(start, end + 1));
   } catch {
-    console.error('Failed to parse Claude JSON response:', cleaned);
+    console.error('Failed to parse Claude JSON response:', text);
     return {};
   }
 }
