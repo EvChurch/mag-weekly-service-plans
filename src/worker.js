@@ -487,7 +487,9 @@ function formatChange(change) {
     case 'remove_empty_notice':
       return `[${change.item_title ?? 'Notice'}] Removed (no description)`;
     case 'remove_empty_highlight':
-      return `[Highlight] Removed (no content)`;
+      return `[Highlight Spot] Removed (no content)`;
+    case 'update_highlight':
+      return `[Highlight Spot] Description updated`;
     case 'fill_placeholder':
       return `[${change.item_title ?? change.role}] Placeholder → "${change.volunteer_name}"`;
     default:

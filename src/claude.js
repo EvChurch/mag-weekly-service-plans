@@ -147,7 +147,10 @@ Automated rules you must apply:
    "All notices are empty — check that the communications person has finalised the notices
    before Sunday." If only SOME notices are empty (others have descriptions), propose
    deleting only the empty ones.
-3. Empty highlight removal: If a "Highlight" item has no content, propose deleting it.
+3. Highlight spot: If the Slack message contains any content about an interview, highlight spot,
+   or special guest (e.g. interview questions, the host if different from the MC, special
+   instructions), propose updating the "Highlight Spot" item description with that content.
+   If the Slack message contains no such content, propose deleting the "Highlight Spot" item.
 4. Pray-er placeholder: If an item titled "Prayer" has a [Prayer Name] placeholder in its
    description, propose replacing only the [Prayer Name] with the volunteer assigned to the
    "Pray-er" role. Leave the rest of the description exactly as-is.
@@ -178,7 +181,13 @@ Return ONLY a JSON object in this exact shape — no markdown, no explanation:
     {
       "type": "remove_empty_highlight",
       "item_id": "789",
-      "item_title": "Highlight"
+      "item_title": "Highlight Spot"
+    },
+    {
+      "type": "update_highlight",
+      "item_id": "790",
+      "item_title": "Highlight Spot",
+      "new_description": "Interview with Jane Doe. Questions: 1. How did you come to faith? 2. What has God been doing in your life?"
     },
     {
       "type": "fill_placeholder",

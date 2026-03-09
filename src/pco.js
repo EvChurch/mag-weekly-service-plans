@@ -104,6 +104,22 @@ async function applyChange(serviceTypeId, planId, change, appId, secret) {
       break;
     }
 
+    case 'update_highlight': {
+      await pcoRequest(
+        'PATCH',
+        `/service_types/${serviceTypeId}/plans/${planId}/items/${change.item_id}`,
+        {
+          data: {
+            type: 'Item',
+            attributes: { description: change.new_description },
+          },
+        },
+        appId,
+        secret,
+      );
+      break;
+    }
+
     case 'fill_placeholder': {
       await pcoRequest(
         'PATCH',
@@ -130,6 +146,7 @@ function describeChange(change) {
     case 'notice_title':      return `Title updated for item ${change.item_id} → "${change.new_title}"`;
     case 'remove_empty_notice':  return `Deleted empty notice item ${change.item_id}`;
     case 'remove_empty_highlight': return `Deleted empty highlight item ${change.item_id}`;
+    case 'update_highlight':       return `Updated Highlight Spot description for item ${change.item_id}`;
     case 'fill_placeholder':  return `Filled placeholder in item ${change.item_id} → "${change.volunteer_name}"`;
     default:                  return JSON.stringify(change);
   }
