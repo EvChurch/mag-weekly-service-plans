@@ -146,8 +146,8 @@ function describeChange(change) {
   switch (change.type) {
     case 'notice_title':           return `Title updated for "${title}" → "${change.new_title}"`;
     case 'remove_empty_notice':    return `Deleted empty notice "${title}"`;
-    case 'remove_empty_highlight': return `Deleted empty highlight "${title}"`;
-    case 'update_highlight':       return `Updated Highlight Spot description for "${title}"`;
+    case 'remove_empty_highlight': return `Deleted empty Highlight Spot`;
+    case 'update_highlight':       return `Updated Highlight Spot description`;
     case 'fill_placeholder':       return `Filled placeholder in "${title}" → "${change.volunteer_name}"`;
     default:                       return JSON.stringify(change);
   }
