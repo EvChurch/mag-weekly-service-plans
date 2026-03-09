@@ -289,6 +289,8 @@ async function handleNewChannelMessage(event, env, campuses) {
 
   console.log('Classification: service plan detected. Running full analysis.');
 
+  await addReaction(event.channel, event.ts, 'eyes', env.SLACK_BOT_TOKEN);
+
   const sunday = nextSundayDate();
 
   // Step 2: process each campus in parallel
