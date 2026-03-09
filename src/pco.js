@@ -179,18 +179,26 @@ async function getNextPlan(serviceTypeId, appId, secret) {
 // ─────────────────────────────────────────────
 
 async function getPlanTeams(planId, serviceTypeId, appId, secret) {
-  // Get teams attached to this plan
-  const planTeams = await getAllPages(
-    `${PCO_BASE}/service_types/${serviceTypeId}/plans/${planId}/team_members?include=team&per_page=100`,
-    appId,
-    secret,
-  );
+  // Fetch all pages manually so we can capture `included` (sideloaded team records)
+  const allMembers = [];
+  const includedById = {};
+  let nextUrl = `${PCO_BASE}/service_types/${serviceTypeId}/plans/${planId}/team_members?include=team&per_page=100`;
 
-  // Group by team
+  while (nextUrl) {
+    const res = await pcoFetch('GET', nextUrl, null, appId, secret);
+    allMembers.push(...(res.data ?? []));
+    for (const inc of res.included ?? []) {
+      includedById[inc.id] = inc;
+    }
+    nextUrl = res.links?.next ?? null;
+  }
+
+  // Group by team, resolving team name from included
   const teamMap = {};
-  for (const member of planTeams) {
+  for (const member of allMembers) {
     const teamId = member.relationships?.team?.data?.id ?? 'unknown';
-    const teamName = member.relationships?.team?.data?.attributes?.name ?? teamId;
+    const teamRecord = includedById[teamId];
+    const teamName = teamRecord?.attributes?.name ?? teamId;
     if (!teamMap[teamId]) {
       teamMap[teamId] = { id: teamId, name: teamName, members: [] };
     }
@@ -198,7 +206,7 @@ async function getPlanTeams(planId, serviceTypeId, appId, secret) {
       id: member.id,
       name: member.attributes.name,
       role: member.attributes.team_position_name,
-      status: member.attributes.status, // confirmed | unconfirmed | declined
+      status: member.attributes.status, // C = confirmed, U = unconfirmed, D = declined
     });
   }
 
@@ -210,9 +218,9 @@ function buildRosterIssues(teams) {
 
   for (const team of teams) {
     for (const member of team.members) {
-      if (member.status === 'unconfirmed') {
+      if (member.status === 'U') {
         issues.push(`${member.role} (${team.name}): ${member.name} has not yet responded`);
-      } else if (member.status === 'declined') {
+      } else if (member.status === 'D') {
         issues.push(`${member.role} (${team.name}): ${member.name} has declined`);
       }
     }

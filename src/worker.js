@@ -475,7 +475,7 @@ function formatAnalysisReply(analysis, pcoPlan, sunday, campusName) {
     }
   }
 
-  lines.push('\n_Reply in this thread to refine, or react :white_check_mark: to apply as-is._');
+  lines.push('\n_Reply in this thread to refine, or react :+1: to apply as-is._');
 
   return lines.join('\n');
 }
