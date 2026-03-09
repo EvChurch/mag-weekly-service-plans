@@ -364,7 +364,7 @@ async function handleThreadReply(event, env) {
     env.SLACK_BOT_TOKEN,
   );
 
-  await addReaction(event.channel, event.ts, 'white_check_mark', env.SLACK_BOT_TOKEN);
+  await addReaction(event.channel, event.ts, '+1', env.SLACK_BOT_TOKEN);
   const replyText = refined.summary ?? 'Plan updated.';
   await postReply(event.channel, stored.bot_reply_ts, replyText, env.SLACK_BOT_TOKEN);
 
@@ -376,11 +376,11 @@ async function handleThreadReply(event, env) {
 }
 
 // ─────────────────────────────────────────────
-// REACTION ADDED (checkmark approval)
+// REACTION ADDED (thumbs up approval)
 // ─────────────────────────────────────────────
 async function handleReaction(event, env) {
-  const isCheckmark = event.reaction === 'white_check_mark' || event.reaction === 'heavy_check_mark';
-  if (!isCheckmark) return;
+  const isThumbsUp = event.reaction === '+1' || event.reaction === 'thumbsup';
+  if (!isThumbsUp) return;
 
   const channel = event.item?.channel;
   const sunday = nextSundayDate();
