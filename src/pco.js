@@ -142,13 +142,14 @@ async function applyChange(serviceTypeId, planId, change, appId, secret) {
 }
 
 function describeChange(change) {
+  const title = change.item_title ?? change.item_id;
   switch (change.type) {
-    case 'notice_title':      return `Title updated for item ${change.item_id} → "${change.new_title}"`;
-    case 'remove_empty_notice':  return `Deleted empty notice item ${change.item_id}`;
-    case 'remove_empty_highlight': return `Deleted empty highlight item ${change.item_id}`;
-    case 'update_highlight':       return `Updated Highlight Spot description for item ${change.item_id}`;
-    case 'fill_placeholder':  return `Filled placeholder in item ${change.item_id} → "${change.volunteer_name}"`;
-    default:                  return JSON.stringify(change);
+    case 'notice_title':           return `Title updated for "${title}" → "${change.new_title}"`;
+    case 'remove_empty_notice':    return `Deleted empty notice "${title}"`;
+    case 'remove_empty_highlight': return `Deleted empty highlight "${title}"`;
+    case 'update_highlight':       return `Updated Highlight Spot description for "${title}"`;
+    case 'fill_placeholder':       return `Filled placeholder in "${title}" → "${change.volunteer_name}"`;
+    default:                       return JSON.stringify(change);
   }
 }
 
