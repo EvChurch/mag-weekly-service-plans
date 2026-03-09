@@ -56,12 +56,12 @@ export async function fetchNextSundayPlan(appId, secret, serviceTypeId) {
  * Apply an array of proposed_changes to PCO.
  * Returns an array of result objects: { ok, description, error? }
  */
-export async function applyChangesToPco(planId, proposedChanges, appId, secret) {
+export async function applyChangesToPco(serviceTypeId, planId, proposedChanges, appId, secret) {
   const results = [];
 
   for (const change of proposedChanges) {
     try {
-      await applyChange(planId, change, appId, secret);
+      await applyChange(serviceTypeId, planId, change, appId, secret);
       results.push({ ok: true, description: describeChange(change) });
     } catch (err) {
       results.push({ ok: false, description: describeChange(change), error: err.message });
@@ -71,12 +71,12 @@ export async function applyChangesToPco(planId, proposedChanges, appId, secret) 
   return results;
 }
 
-async function applyChange(planId, change, appId, secret) {
+async function applyChange(serviceTypeId, planId, change, appId, secret) {
   switch (change.type) {
     case 'notice_title': {
       await pcoRequest(
         'PATCH',
-        `/service_types/0/plans/${planId}/items/${change.item_id}`,
+        `/service_types/${serviceTypeId}/plans/${planId}/items/${change.item_id}`,
         {
           data: {
             type: 'Item',
@@ -96,7 +96,7 @@ async function applyChange(planId, change, appId, secret) {
     case 'remove_empty_highlight': {
       await pcoRequest(
         'DELETE',
-        `/service_types/0/plans/${planId}/items/${change.item_id}`,
+        `/service_types/${serviceTypeId}/plans/${planId}/items/${change.item_id}`,
         null,
         appId,
         secret,
@@ -107,7 +107,7 @@ async function applyChange(planId, change, appId, secret) {
     case 'fill_placeholder': {
       await pcoRequest(
         'PATCH',
-        `/service_types/0/plans/${planId}/items/${change.item_id}`,
+        `/service_types/${serviceTypeId}/plans/${planId}/items/${change.item_id}`,
         {
           data: {
             type: 'Item',

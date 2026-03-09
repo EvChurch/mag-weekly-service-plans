@@ -393,6 +393,7 @@ async function handleReaction(event, env) {
   if (event.user !== stored.approver_user_id) return;
 
   const results = await applyChangesToPco(
+    stored.service_type_id,
     stored.pco_plan_id,
     stored.proposed_changes,
     env.PCO_APP_ID,
