@@ -11,7 +11,7 @@
     "build:check": "wrangler deploy --dry-run --outdir dist/ci"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.36.3",
+    "@anthropic-ai/sdk": "^0.133.0",
     "@slack/web-api": "^7.3.4"
   },
   "devDependencies": {
